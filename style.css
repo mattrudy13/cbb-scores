@@ -198,4 +198,11 @@ h1 { margin: 4px 0 0; font-family: Graduate, serif; font-weight: 400; font-size:
 .status-post { text-transform: uppercase; }
 .meta { min-width: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* Upset tags: a solid orange tab for a finished upset, an outlined one for a live "upset watch". */
+.upset-tag { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.upset-upset { background: var(--orange-fill); color: #fff; }
+.upset-watch { border: 1.5px solid var(--orange); color: var(--orange); }
+.upset-watch::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+.hero .upset-tag { align-self: center; }
+
 .footer { padding-top: 4px; padding-bottom: 32px; text-align: center; font-size: 13px; color: var(--muted); }

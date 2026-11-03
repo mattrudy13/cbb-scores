@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   recordLine, normalizeEvent, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
-  statusText, scoreRole, addDays, dayLabel, dayTag, isIsoDate, nextDelay,
+  statusText, scoreRole, addDays, dayLabel, dayTag, isIsoDate, nextDelay, parseLine, upsetState, upsetTag,
 } from "../lib.js";
 
 // A trimmed ESPN scoreboard event (only the fields lib.js reads).
@@ -122,6 +122,39 @@ test("dates", () => {
   assert.equal(dayTag("2026-11-02", "2026-11-03"), "Yesterday");
   assert.equal(isIsoDate("2026-11-03"), true);
   assert.equal(isIsoDate("nope"), false);
+});
+
+test("parseLine takes the pre-game DraftKings line, not the live one", () => {
+  // Shape of ESPN's core odds feed for a live game (UConn favored at home).
+  const live = { items: [
+    { provider: { name: "DraftKings - Live Odds" }, details: "CONN -39.5", spread: -39.5, homeTeamOdds: { favorite: true } },
+    { provider: { name: "DraftKings" }, details: "CONN -41.5", spread: -41.5, homeTeamOdds: { favorite: true }, awayTeamOdds: { favorite: false } },
+  ] };
+  assert.deepEqual(parseLine(live), { fav: "home", line: 41.5, details: "CONN -41.5" });
+  // Away favorite, told only by the sign of the home-side spread.
+  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "NIU -8.5", spread: 8.5 }] }), { fav: "away", line: 8.5, details: "NIU -8.5" });
+  assert.equal(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "EVEN", spread: 0 }] }), null);
+  assert.equal(parseLine({ items: [] }), null);
+});
+
+test("upsets: a 5+ underdog that won, or is leading live", () => {
+  const NIU = { id: "2459", name: "N Illinois", abbr: "NIU", confId: "14" };
+  const GRAM = { id: "2755", name: "Grambling", abbr: "GRAM", confId: "26" };
+  const game = (state, name, a, h, winner) => normalizeEvent(ev({ id: "u", state, name, period: 2, clock: "3:00",
+    away: { ...GRAM, score: a, winner: winner === "away" }, home: { ...NIU, score: h, winner: winner === "home" } }));
+  const niuBy = (line) => ({ fav: "home", line, details: `NIU -${line}` });
+  const final = game("post", "STATUS_FINAL", "89", "87", "away");
+  assert.equal(upsetState(final, niuBy(8.5)), "upset");
+  assert.equal(upsetTag(final, niuBy(8.5)), "Upset · GRAM +8.5");
+  assert.equal(upsetState(final, niuBy(4.5)), null); // under the 5-point rule
+  assert.equal(upsetState(game("post", "STATUS_FINAL", "70", "80", "home"), niuBy(8.5)), null); // favorite won
+  const live = game("in", "STATUS_IN_PROGRESS", "50", "44");
+  assert.equal(upsetState(live, niuBy(7.5)), "watch");
+  assert.equal(upsetTag(live, niuBy(7.5)), "Upset watch · GRAM +7.5");
+  assert.equal(upsetState(game("in", "STATUS_IN_PROGRESS", "40", "44"), niuBy(7.5)), null); // favorite leads
+  assert.equal(upsetState(final, null), null); // no line
+  assert.equal(matchesFilter(final, "upsets", new Map([["u", niuBy(8.5)]])), true);
+  assert.equal(matchesFilter(final, "upsets", new Map()), false);
 });
 
 test("refresh timing", () => {

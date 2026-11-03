@@ -15,6 +15,7 @@ export const BOARD_QUERIES = ["", "&groups=2", "&groups=7", "&groups=8", "&group
 export const FILTERS = [
   { key: "all", label: "All" },
   { key: "top25", label: "Top 25" },
+  { key: "upsets", label: "Upsets" },
   { key: "acc", label: "ACC", conf: "2" },
   { key: "b10", label: "Big Ten", conf: "7" },
   { key: "b12", label: "Big 12", conf: "8" },
@@ -115,11 +116,53 @@ const teams = (g) => [g.away, g.home];
 export const hasUva = (g) => teams(g).some((t) => t.id === UVA_ID);
 export const isShown = (g) => teams(g).some((t) => t.rank || MAJOR_CONFS[t.confId] || t.id === UVA_ID);
 
-export function matchesFilter(g, key) {
+// `lines` (event id → parsed line, see parseLine) is only needed for the Upsets filter.
+export function matchesFilter(g, key, lines) {
   const f = FILTERS.find((x) => x.key === key);
   if (!f || f.key === "all") return true;
   if (f.key === "top25") return teams(g).some((t) => t.rank);
+  if (f.key === "upsets") return !!upsetState(g, lines?.get(g.id));
   return teams(g).some((t) => t.confId === f.conf);
+}
+
+// ---- upsets ----
+// The scoreboard drops the spread once a game tips, so lines come from ESPN's per-game odds feed (~7 KB),
+// which keeps the pre-game DraftKings line next to a separate "Live Odds" entry.
+
+export const UPSET_MIN = 5; // Rudy's rule: an underdog of 5+ points
+export const oddsUrl = (id) => `https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events/${id}/competitions/${id}/odds`;
+
+// The pre-game line from that feed: { fav: "home" | "away", line: 8.5, details: "NIU -8.5" }, or null for
+// no line or a pick'em.
+export function parseLine(json) {
+  const items = json?.items ?? [];
+  const pre = items.filter((x) => !/live/i.test(x?.provider?.name ?? "") && x?.spread != null);
+  const o = pre.find((x) => /draftkings/i.test(x.provider?.name ?? "")) ?? pre[0];
+  if (!o) return null;
+  const line = Math.abs(Number(o.spread));
+  if (!line) return null;
+  // `spread` is from the home team's side (-7.5 = home favored); the favorite flags say it directly.
+  const homeFav = o.homeTeamOdds?.favorite ?? (o.awayTeamOdds?.favorite != null ? !o.awayTeamOdds.favorite : Number(o.spread) < 0);
+  return { fav: homeFav ? "home" : "away", line, details: o.details ?? "" };
+}
+
+// "upset" (a 5+ underdog won), "watch" (one is leading right now) or null.
+export function upsetState(g, info) {
+  if (!info || info.line < UPSET_MIN) return null;
+  const dog = g[info.fav === "home" ? "away" : "home"];
+  const fav = g[info.fav];
+  if (dog.score === null || fav.score === null) return null;
+  if (g.state === "post" && !/POSTPONED|CANCELED|CANCELLED|FORFEIT/.test(g.statusName)) return dog.winner || dog.score > fav.score ? "upset" : null;
+  if (g.state === "in") return dog.score > fav.score ? "watch" : null;
+  return null;
+}
+
+// The card tag: "Upset · GRAM +8.5" or "Upset watch · ND +7.5".
+export function upsetTag(g, info) {
+  const s = upsetState(g, info);
+  if (!s) return "";
+  const dog = g[info.fav === "home" ? "away" : "home"];
+  return `${s === "upset" ? "Upset" : "Upset watch"} · ${dog.abbr || dog.name} +${info.line}`;
 }
 
 const margin = (g) => Math.abs((g.away.score ?? 0) - (g.home.score ?? 0));
