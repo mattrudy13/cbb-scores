@@ -8,13 +8,25 @@ patching it when it breaks.
 ## Files
 
 - `index.html`: page shell (header, filter bar, UVA slot, game list, footer).
-- `lib.js`: pure helpers (normalize ESPN events, merge boards, filter, sort, labels, dates, refresh timing).
-  No DOM, so `npm test` (`node --test`) covers it.
-- `app.js`: fetching, URL state, rendering, polling, theme toggle.
+- `lib.js`: pure helpers (normalize ESPN events, merge boards, filter, sort, labels, dates, refresh timing,
+  betting-line parsing and upset rules, score-change diffing). No DOM, so `npm test` (`node --test`) covers it.
+- `app.js`: fetching, URL state, rendering, polling, betting-line lookups (+ localStorage cache), the
+  score flash, theme toggle.
 - `style.css`: the Hardwood look. Light/dark tokens on `:root`.
 - `test/lib.test.mjs`: unit tests on trimmed ESPN-shaped fixtures.
 - `.phones.html` (not deployed, gitignored): 320/360/375/390 px iframes of the page for width checks.
   Headless Chrome can't fetch ESPN from this machine's sandbox, so check it in real Chrome.
+
+## Versions
+
+All on 2026-11-02 (opening night), tagged in git:
+- **v0.1**: scoreboard (P4 + Big East + Top 25, UVA pinned, filters, day arrows, 30 s refresh), Hardwood look.
+- **v0.2**: Upsets filter (5+ point underdogs that won, live "upset watch").
+- **v0.3**: score flash on change; ranked team losing to unranked/lower-ranked counts as an upset.
+- **v0.4**: live games sort close-first by time left.
+
+Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
+rank upset rule fires too often on league Saturdays, and whether "Upset watch" is noisy early in games.
 
 ## Rules (Rudy's decisions, 2026-11-02)
 
@@ -82,7 +94,8 @@ mode) with a center-court circle behind the date only, floorboard stripe, maple 
 borders (#c9a46f), Graduate numerals + DM Sans, orange #a8450c (#ff9a52 on dark). Filters are the
 "scorer's table" row: solid cream chips under the stripe, sticky while scrolling, never over court lines
 (Rudy found outlined chips on court lines clashed). Phones get a short weekday ("Tue, Nov 3"), the UVA
-score on its own row, and the update time in the footer.
+score on its own row, and the update time in the footer. The same canvas has the filter-placement board and
+the score-animation demo (3 live phone frames: flash, flip, pulse; Rudy picked the flash).
 
 ## Checks
 

@@ -6,6 +6,7 @@ Virginia pinned on top.
 **Site:** https://mattrudy13.github.io/cbb-scores/
 
 - Filter by Top 25, Upsets (5+ point underdogs, or ranked teams losing to lower-ranked or unranked ones), ACC, Big Ten, Big 12, SEC or Big East
+- Live games sort close games first, nearest to the final buzzer at the top
 - New scores glow briefly when they change
 - Step through days with the arrows (links like `?d=2026-03-14&f=acc` work too)
 - Updates every 30 seconds while games are live
