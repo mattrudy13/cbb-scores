@@ -32,7 +32,10 @@ patching it when it breaks.
   outlined for a watch. `upsetInfo()` in `lib.js`. In the Upsets view the sections read "Upset watch" and "Upsets".
 - **Filters:** one at a time: All, Top 25, Upsets, ACC, Big Ten, Big 12, SEC, Big East. A game matches if either
   team does. Counts on each button; a filter with no games that day is dimmed and disabled.
-- **Order after UVA:** Live (closest margin first), Up next (tip time), Final (tip time).
+- **Order after UVA:** Live, then Up next (tip time), then Final (tip time). Live (v0.4, Rudy's pick): games
+  within 10 points (`CLOSE_MARGIN`) first, by least time left; then blowouts, by least time left; ties by
+  margin. `secondsLeft()`: 1st half = 20:00 + clock, halftime = 20:00, 2nd half and OT = clock (ESPN's
+  numeric `status.clock`, in seconds).
 - **Card:** logo, AP rank, team, record, score, status, TV; DraftKings spread + O/U before tip only.
   Tapping opens ESPN's game page in a new tab (no box scores built in).
 - **Records:** overall only until the team has played a conference game, then "13-2 · 4-0 ACC".
