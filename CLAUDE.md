@@ -24,7 +24,11 @@ patching it when it breaks.
   nothing extra.
 - **Days:** opens on today in Eastern time; ◀ ▶ step a day. `?d=YYYY-MM-DD&f=<filter>` in the URL
   (today and "all" are left out of the URL).
-- **Filters:** one at a time: All, Top 25, ACC, Big Ten, Big 12, SEC, Big East. A game matches if either
+- **Upsets** (added 2026-11-02, v0.2): a filter after Top 25. An upset = an underdog of 5+ points
+  (`UPSET_MIN`, Rudy's pick over the hub's 7) that won; a live game where that underdog leads is an
+  "Upset watch". Cards get a tag ("Upset · GRAM +8.5" solid, "Upset watch · ND +7.5" outlined) under every
+  filter. In the Upsets view the sections read "Upset watch" and "Upsets".
+- **Filters:** one at a time: All, Top 25, Upsets, ACC, Big Ten, Big 12, SEC, Big East. A game matches if either
   team does. Counts on each button; a filter with no games that day is dimmed and disabled.
 - **Order after UVA:** Live (closest margin first), Up next (tip time), Final (tip time).
 - **Card:** logo, AP rank, team, record, score, status, TV; DraftKings spread + O/U before tip only.
@@ -44,7 +48,14 @@ patching it when it breaks.
 - When two boards disagree about a game (one fetched a moment staler), the furthest-along copy wins
   (`progress()` in `lib.js`).
 - ESPN sends score "0" before tip-off; `normalizeEvent` blanks pre-game scores.
-- `odds` disappears once a game goes final and is often missing early in the season.
+- The scoreboard's `odds` disappears once a game tips (live and final), and is often missing early in the
+  season. For upsets, each tipped game's line comes from ESPN's core odds feed
+  (`sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events/<id>/competitions/<id>/odds`,
+  ~7 KB, CORS `*`). Its items include "DraftKings" (the pre-game line, kept) and "DraftKings - Live Odds"
+  (ignored). `spread` is from the home side; `homeTeamOdds.favorite` says who's favored. The game summary's
+  `pickcenter` has the same line but is ~435 KB. Lines are fetched four at a time, once per game, and kept
+  in localStorage (`cbb-scores:lines`, last 1,500 games; a null = "checked, no line"). Failed requests
+  aren't saved, so the next refresh retries. Opening night (58 games) was 58 requests.
 - `timeValid: false` = tip time not set yet ("TBA").
 - Status names used: `STATUS_HALFTIME`, `STATUS_END_PERIOD`, and postponed/canceled/suspended/delayed/forfeit
   (shown with ESPN's `shortDetail`). Periods: 1st, 2nd, OT, 2OT…
