@@ -98,13 +98,14 @@ async function load() {
   if (state.loadedFor === date) lookUpLines(state.games);
 }
 
-// ---- pre-game betting lines for tipped games (Upsets filter and the card's spread + O/U) ----
+// ---- pre-game betting lines for tipped games (Upsets filter and the card's spread) ----
 // One small request per game once it has tipped. The pre-game line never changes after that, so each answer
 // (including "no line") is kept on this device and never fetched again.
 
-// v2 added the O/U and pick'em lines; the old key's entries lack them, so they're dropped and looked up again.
-const LINES_KEY = "cbb-scores:lines2";
-try { localStorage.removeItem("cbb-scores:lines"); } catch { /* blocked: fine */ }
+// v3 saves the spread's display text and pick'em lines; older keys' entries don't fit, so they're dropped and
+// looked up again.
+const LINES_KEY = "cbb-scores:lines3";
+try { ["cbb-scores:lines", "cbb-scores:lines2"].forEach((k) => localStorage.removeItem(k)); } catch { /* blocked: fine */ }
 const lines = new Map();
 const pending = new Set();
 try {

@@ -145,19 +145,19 @@ test("parseLine takes the pre-game DraftKings line, not the live one", () => {
     { provider: { name: "DraftKings - Live Odds" }, details: "CONN -39.5", spread: -39.5, homeTeamOdds: { favorite: true } },
     { provider: { name: "DraftKings" }, details: "CONN -41.5", spread: -41.5, overUnder: 143.5, homeTeamOdds: { favorite: true }, awayTeamOdds: { favorite: false } },
   ] };
-  assert.deepEqual(parseLine(live), { fav: "home", line: 41.5, text: "CONN −41.5 · O/U 143.5" });
-  // Away favorite, told only by the sign of the home-side spread; no O/U posted.
-  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "NIU -8.5", spread: 8.5 }] }), { fav: "away", line: 8.5, text: "NIU −8.5" });
+  assert.deepEqual(parseLine(live), { fav: "home", line: 41.5, spread: "CONN −41.5" });
+  // Away favorite, told only by the sign of the home-side spread.
+  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "NIU -8.5", spread: 8.5 }] }), { fav: "away", line: 8.5, spread: "NIU −8.5" });
   // A pick'em still shows, but has no favorite (so it can't be a spread upset).
-  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "EVEN", spread: 0, overUnder: 150 }] }), { fav: null, line: 0, text: "EVEN · O/U 150" });
+  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "EVEN", spread: 0, overUnder: 150 }] }), { fav: null, line: 0, spread: "EVEN" });
   assert.equal(parseLine({ items: [] }), null);
 });
 
-test("shownLine: scoreboard line before tip, saved pre-game line after", () => {
-  const info = { fav: "home", line: 6.5, text: "FLA −6.5 · O/U 158.5" };
+test("shownLine: spread + O/U before tip, just the pre-game spread after", () => {
+  const info = { fav: "home", line: 6.5, spread: "FLA −6.5" };
   assert.equal(shownLine({ state: "pre", line: "FLA −7 · O/U 159" }, info), "FLA −7 · O/U 159");
-  assert.equal(shownLine({ state: "in", line: "" }, info), "FLA −6.5 · O/U 158.5");
-  assert.equal(shownLine({ state: "post", line: "" }, info), "FLA −6.5 · O/U 158.5");
+  assert.equal(shownLine({ state: "in", line: "" }, info), "FLA −6.5");
+  assert.equal(shownLine({ state: "post", line: "" }, info), "FLA −6.5");
   assert.equal(shownLine({ state: "in", line: "" }, null), "");
   assert.equal(shownLine({ state: "in", line: "" }, undefined), "");
 });
