@@ -24,10 +24,12 @@ patching it when it breaks.
   nothing extra.
 - **Days:** opens on today in Eastern time; ◀ ▶ step a day. `?d=YYYY-MM-DD&f=<filter>` in the URL
   (today and "all" are left out of the URL).
-- **Upsets** (added 2026-11-02, v0.2): a filter after Top 25. An upset = an underdog of 5+ points
-  (`UPSET_MIN`, Rudy's pick over the hub's 7) that won; a live game where that underdog leads is an
-  "Upset watch". Cards get a tag ("Upset · GRAM +8.5" solid, "Upset watch · ND +7.5" outlined) under every
-  filter. In the Upsets view the sections read "Upset watch" and "Upsets".
+- **Upsets** (added 2026-11-02, v0.2): a filter after Top 25. An upset is either (1) an underdog of 5+ points
+  (`UPSET_MIN`, Rudy's pick over the hub's 7) that won, or (2, v0.3) a ranked team losing to an unranked or
+  lower-ranked team, whatever the spread said (even if that team was favored). A live game where either would
+  happen if it ended now is an "Upset watch". Cards get a tag under every filter: the line when the spread
+  rule fits ("Upset · GRAM +8.5"), else the rank that fell ("Upset · UCLA over #5"); solid for a final,
+  outlined for a watch. `upsetInfo()` in `lib.js`. In the Upsets view the sections read "Upset watch" and "Upsets".
 - **Filters:** one at a time: All, Top 25, Upsets, ACC, Big Ten, Big 12, SEC, Big East. A game matches if either
   team does. Counts on each button; a filter with no games that day is dimmed and disabled.
 - **Order after UVA:** Live (closest margin first), Up next (tip time), Final (tip time).
@@ -36,6 +38,13 @@ patching it when it breaks.
 - **Records:** overall only until the team has played a conference game, then "13-2 · 4-0 ACC".
   0-0 shows as 0-0 (so the cards keep their shape). Conference short names live in `CONF_SHORT`
   (ESPN's groups endpoint has no ids); a missing id reads "conf".
+- **Score animation** (v0.3, Rudy's pick from 3 in the demo board): a changed score glows orange and fades
+  (~1.2 s); a game that just became an upset watch has its tag pop in. `scoreChanges()` in `lib.js` diffs two
+  loads of the same day. Nothing animates on a day's first load or when coming back after 1+ minute in the
+  background (`quietNext`), since then every live game would glow at once. Start times are kept so a
+  re-render mid-glow continues it (negative `animation-delay`) instead of restarting. Off under
+  `prefers-reduced-motion`. Both numbers glow when both changed: a play-by-play replay of 13 games put that
+  at ~9% of changes, but ESPN's feed seemed to bunch updates more than that on opening night.
 - **Refresh:** every 30 s while a game on the shown day is live or tips within 15 min, every 10 min while
   games are still to come, never for a finished day, and never in a hidden tab (it catches up on return).
   If every request fails, the last good scores stay up with a note.
