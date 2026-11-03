@@ -25,6 +25,7 @@ All on 2026-11-02 (opening night), tagged in git:
 - **v0.3**: score flash on change; ranked team losing to unranked/lower-ranked counts as an upset.
 - **v0.4**: live games sort close-first by time left.
 - **v0.5** (2026-11-03): live and final cards keep the pre-game spread + O/U.
+- **v0.6** (2026-11-03): after tip, just the spread; the O/U shows before tip only.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
 rank upset rule fires too often on league Saturdays, and whether "Upset watch" is noisy early in games.
@@ -49,8 +50,8 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
   within 10 points (`CLOSE_MARGIN`) first, by least time left; then blowouts, by least time left; ties by
   margin. `secondsLeft()`: 1st half = 20:00 + clock, halftime = 20:00, 2nd half and OT = clock (ESPN's
   numeric `status.clock`, in seconds).
-- **Card:** logo, AP rank, team, record, score, status, TV; DraftKings spread + O/U. Before tip it's the scoreboard's line; once a game tips
-  (live and final) it's the saved pre-game line from the odds feed (v0.5, Rudy asked; never live odds).
+- **Card:** logo, AP rank, team, record, score, status, TV; DraftKings spread + O/U before tip (the scoreboard's line); once a game tips (live
+  and final), just the pre-game spread from the odds feed, no O/U (v0.5–v0.6, Rudy's pick; never live odds).
   Tapping opens ESPN's game page in a new tab (no box scores built in).
 - **Records:** overall only until the team has played a conference game, then "13-2 · 4-0 ACC".
   0-0 shows as 0-0 (so the cards keep their shape). Conference short names live in `CONF_SHORT`
@@ -79,10 +80,10 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
   (`sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events/<id>/competitions/<id>/odds`,
   ~7 KB, CORS `*`). Its items include "DraftKings" (the pre-game line, kept) and "DraftKings - Live Odds"
   (ignored). `spread` is from the home side; `homeTeamOdds.favorite` says who's favored. The game summary's
-  `pickcenter` has the same line but is ~435 KB. `parseLine()` keeps the spread, favorite and display text (spread + O/U); a pick'em
+  `pickcenter` has the same line but is ~435 KB. `parseLine()` keeps the spread, favorite and spread text ("FLA −6.5"); a pick'em
   has `line: 0`, `fav: null`. Lines are fetched four at a time, once per game, and kept
-  in localStorage (`cbb-scores:lines2`, last 1,500 games; a null = "checked, no line"). v0.5 drops the old
-  `cbb-scores:lines` key, whose entries lacked the O/U. Failed requests
+  in localStorage (`cbb-scores:lines3`, last 1,500 games; a null = "checked, no line"). v0.6 drops the older
+  `cbb-scores:lines` and `lines2` keys, whose entries had a different shape. Failed requests
   aren't saved, so the next refresh retries. Opening night (58 games) was 58 requests.
 - `timeValid: false` = tip time not set yet ("TBA").
 - Status names used: `STATUS_HALFTIME`, `STATUS_END_PERIOD`, and postponed/canceled/suspended/delayed/forfeit
