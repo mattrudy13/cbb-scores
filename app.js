@@ -1,7 +1,7 @@
 import {
   ESPN, BOARD_QUERIES, FILTERS, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
   statusText, tipTime, scoreRole, etDate, isIsoDate, addDays, dayLabel, dayLabelShort, dayTag, nextDelay,
-  oddsUrl, parseLine, upsetState, upsetTag, UPSET_MIN, scoreChanges,
+  oddsUrl, parseLine, shownLine, upsetState, upsetTag, UPSET_MIN, scoreChanges,
 } from "./lib.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -98,11 +98,13 @@ async function load() {
   if (state.loadedFor === date) lookUpLines(state.games);
 }
 
-// ---- betting lines for the Upsets filter ----
+// ---- pre-game betting lines for tipped games (Upsets filter and the card's spread + O/U) ----
 // One small request per game once it has tipped. The pre-game line never changes after that, so each answer
 // (including "no line") is kept on this device and never fetched again.
 
-const LINES_KEY = "cbb-scores:lines";
+// v2 added the O/U and pick'em lines; the old key's entries lack them, so they're dropped and looked up again.
+const LINES_KEY = "cbb-scores:lines2";
+try { localStorage.removeItem("cbb-scores:lines"); } catch { /* blocked: fine */ }
 const lines = new Map();
 const pending = new Set();
 try {
@@ -176,7 +178,7 @@ function upsetBadge(g) {
 function gameCard(g) {
   const tag = upsetTag(g, lines.get(g.id));
   const label = `${g.away.name} at ${g.home.name}, ${statusText(g)}${tag ? `, ${tag}` : ""}`;
-  const meta = [g.tv, g.state === "pre" ? g.line : ""].filter(Boolean).join(" · ");
+  const meta = [g.tv, shownLine(g, lines.get(g.id))].filter(Boolean).join(" · ");
   return `<a class="game" href="${esc(safeUrl(g.link))}" target="_blank" rel="noopener" aria-label="${esc(label)} (ESPN, new tab)">
     ${upsetBadge(g)}
     ${teamRow(g, "away")}
@@ -204,7 +206,7 @@ function uvaHero(g) {
   const middle = g.state === "pre"
     ? `<span class="hero-tip">${esc(tipTime(g))}</span>`
     : `${scoreSpan(g, "away")}<span class="hero-dash">–</span>${scoreSpan(g, "home")}`;
-  const foot = [g.state === "pre" ? "" : statusText(g), g.tv, g.state === "pre" ? g.line : ""].filter(Boolean);
+  const foot = [g.state === "pre" ? "" : statusText(g), g.tv, shownLine(g, lines.get(g.id))].filter(Boolean);
   return `<a class="hero" href="${esc(safeUrl(g.link))}" target="_blank" rel="noopener" aria-label="Virginia: ${esc(`${g.away.name} at ${g.home.name}, ${statusText(g)}`)} (ESPN, new tab)">
     <span class="hero-label ${g.state === "in" ? "is-live" : ""}">Virginia · ${esc(when)}</span>
     ${upsetBadge(g)}

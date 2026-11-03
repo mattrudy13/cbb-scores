@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   recordLine, normalizeEvent, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
-  statusText, scoreRole, addDays, dayLabel, dayTag, isIsoDate, nextDelay, parseLine, upsetState, upsetTag,
+  statusText, scoreRole, addDays, dayLabel, dayTag, isIsoDate, nextDelay, parseLine, shownLine, upsetState, upsetTag,
   scoreChanges,
 } from "../lib.js";
 
@@ -143,13 +143,23 @@ test("parseLine takes the pre-game DraftKings line, not the live one", () => {
   // Shape of ESPN's core odds feed for a live game (UConn favored at home).
   const live = { items: [
     { provider: { name: "DraftKings - Live Odds" }, details: "CONN -39.5", spread: -39.5, homeTeamOdds: { favorite: true } },
-    { provider: { name: "DraftKings" }, details: "CONN -41.5", spread: -41.5, homeTeamOdds: { favorite: true }, awayTeamOdds: { favorite: false } },
+    { provider: { name: "DraftKings" }, details: "CONN -41.5", spread: -41.5, overUnder: 143.5, homeTeamOdds: { favorite: true }, awayTeamOdds: { favorite: false } },
   ] };
-  assert.deepEqual(parseLine(live), { fav: "home", line: 41.5, details: "CONN -41.5" });
-  // Away favorite, told only by the sign of the home-side spread.
-  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "NIU -8.5", spread: 8.5 }] }), { fav: "away", line: 8.5, details: "NIU -8.5" });
-  assert.equal(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "EVEN", spread: 0 }] }), null);
+  assert.deepEqual(parseLine(live), { fav: "home", line: 41.5, text: "CONN −41.5 · O/U 143.5" });
+  // Away favorite, told only by the sign of the home-side spread; no O/U posted.
+  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "NIU -8.5", spread: 8.5 }] }), { fav: "away", line: 8.5, text: "NIU −8.5" });
+  // A pick'em still shows, but has no favorite (so it can't be a spread upset).
+  assert.deepEqual(parseLine({ items: [{ provider: { name: "DraftKings" }, details: "EVEN", spread: 0, overUnder: 150 }] }), { fav: null, line: 0, text: "EVEN · O/U 150" });
   assert.equal(parseLine({ items: [] }), null);
+});
+
+test("shownLine: scoreboard line before tip, saved pre-game line after", () => {
+  const info = { fav: "home", line: 6.5, text: "FLA −6.5 · O/U 158.5" };
+  assert.equal(shownLine({ state: "pre", line: "FLA −7 · O/U 159" }, info), "FLA −7 · O/U 159");
+  assert.equal(shownLine({ state: "in", line: "" }, info), "FLA −6.5 · O/U 158.5");
+  assert.equal(shownLine({ state: "post", line: "" }, info), "FLA −6.5 · O/U 158.5");
+  assert.equal(shownLine({ state: "in", line: "" }, null), "");
+  assert.equal(shownLine({ state: "in", line: "" }, undefined), "");
 });
 
 test("upsets: a 5+ underdog that won, or is leading live", () => {

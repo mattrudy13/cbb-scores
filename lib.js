@@ -61,8 +61,9 @@ function team(comp) {
   };
 }
 
-// ESPN's spread reads "UVA -28.5"; a real minus sign reads better.
-function lineText(odds) {
+// ESPN's spread reads "UVA -28.5"; a real minus sign reads better. Takes the scoreboard's `odds` or the odds
+// feed's line item (both have `details` and `overUnder`).
+export function lineText(odds) {
   if (!odds) return "";
   const parts = [];
   if (odds.details) parts.push(String(odds.details).replace(/ -(?=\d)/, " −"));
@@ -141,19 +142,22 @@ export function matchesFilter(g, key, lines) {
 export const UPSET_MIN = 5; // Rudy's rule: an underdog of 5+ points
 export const oddsUrl = (id) => `https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events/${id}/competitions/${id}/odds`;
 
-// The pre-game line from that feed: { fav: "home" | "away", line: 8.5, details: "NIU -8.5" }, or null for
-// no line or a pick'em.
+// The pre-game line from that feed: { fav: "home" | "away" | null, line: 8.5, text: "NIU −8.5 · O/U 141.5" },
+// or null for no line at all. A pick'em has line 0 and fav null, so it never counts toward an upset but its
+// text still shows on the card.
 export function parseLine(json) {
   const items = json?.items ?? [];
-  const pre = items.filter((x) => !/live/i.test(x?.provider?.name ?? "") && x?.spread != null);
+  const pre = items.filter((x) => !/live/i.test(x?.provider?.name ?? "") && (x?.spread != null || x?.overUnder != null));
   const o = pre.find((x) => /draftkings/i.test(x.provider?.name ?? "")) ?? pre[0];
   if (!o) return null;
-  const line = Math.abs(Number(o.spread));
-  if (!line) return null;
+  const line = Math.abs(Number(o.spread)) || 0;
   // `spread` is from the home team's side (-7.5 = home favored); the favorite flags say it directly.
   const homeFav = o.homeTeamOdds?.favorite ?? (o.awayTeamOdds?.favorite != null ? !o.awayTeamOdds.favorite : Number(o.spread) < 0);
-  return { fav: homeFav ? "home" : "away", line, details: o.details ?? "" };
+  return { fav: line ? (homeFav ? "home" : "away") : null, line, text: lineText(o) };
 }
+
+// The line shown on a card: the scoreboard's before tip, the saved pre-game line after (live and final).
+export const shownLine = (g, info) => (g.state === "pre" ? g.line : info?.text ?? "");
 
 // Why a game is (or is becoming) an upset, or null. Two rules (Rudy's):
 // - spread: the winner (or the live leader) was an underdog of UPSET_MIN+ points;
