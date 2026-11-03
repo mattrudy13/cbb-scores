@@ -146,23 +146,35 @@ export function parseLine(json) {
   return { fav: homeFav ? "home" : "away", line, details: o.details ?? "" };
 }
 
-// "upset" (a 5+ underdog won), "watch" (one is leading right now) or null.
-export function upsetState(g, info) {
-  if (!info || info.line < UPSET_MIN) return null;
-  const dog = g[info.fav === "home" ? "away" : "home"];
-  const fav = g[info.fav];
-  if (dog.score === null || fav.score === null) return null;
-  if (g.state === "post" && !/POSTPONED|CANCELED|CANCELLED|FORFEIT/.test(g.statusName)) return dog.winner || dog.score > fav.score ? "upset" : null;
-  if (g.state === "in") return dog.score > fav.score ? "watch" : null;
+// Why a game is (or is becoming) an upset, or null. Two rules (Rudy's):
+// - spread: the winner (or the live leader) was an underdog of UPSET_MIN+ points;
+// - rank: a ranked team lost to (or trails) an unranked or lower-ranked team, whatever the spread said.
+// Returns { state: "upset" | "watch", why: "spread" | "rank", side, line?, beatenRank? }.
+export function upsetInfo(g, info) {
+  const { away, home } = g;
+  if (away.score === null || home.score === null || away.score === home.score) return null;
+  let state;
+  if (g.state === "post" && !/POSTPONED|CANCELED|CANCELLED|FORFEIT/.test(g.statusName)) state = "upset";
+  else if (g.state === "in") state = "watch";
+  else return null;
+  const side = (g.state === "post" && (away.winner || home.winner)) ? (away.winner ? "away" : "home") : away.score > home.score ? "away" : "home";
+  const ahead = g[side];
+  const behind = g[side === "away" ? "home" : "away"];
+  if (info && info.line >= UPSET_MIN && info.fav !== side) return { state, why: "spread", side, line: info.line };
+  if (behind.rank && (!ahead.rank || ahead.rank > behind.rank)) return { state, why: "rank", side, beatenRank: behind.rank };
   return null;
 }
 
-// The card tag: "Upset · GRAM +8.5" or "Upset watch · ND +7.5".
+// "upset", "watch" or null.
+export const upsetState = (g, info) => upsetInfo(g, info)?.state ?? null;
+
+// The card tag: "Upset · GRAM +8.5", "Upset watch · ND +7.5", or by rank "Upset · UCLA over #5".
 export function upsetTag(g, info) {
-  const s = upsetState(g, info);
-  if (!s) return "";
-  const dog = g[info.fav === "home" ? "away" : "home"];
-  return `${s === "upset" ? "Upset" : "Upset watch"} · ${dog.abbr || dog.name} +${info.line}`;
+  const u = upsetInfo(g, info);
+  if (!u) return "";
+  const t = g[u.side];
+  const why = u.why === "spread" ? `+${u.line}` : `over #${u.beatenRank}`;
+  return `${u.state === "upset" ? "Upset" : "Upset watch"} · ${t.abbr || t.name} ${why}`;
 }
 
 const margin = (g) => Math.abs((g.away.score ?? 0) - (g.home.score ?? 0));
@@ -215,6 +227,26 @@ export function scoreRole(g, side) {
   if (g.state === "pre" || me.score === null || other.score === null) return "none";
   if (g.state === "post") return me.winner || me.score > other.score ? "won" : "lost";
   return me.score > other.score ? "lead" : "trail";
+}
+
+// ---- score-change animation ----
+// What changed between two loads of the same day: the scores to flash ("<id>:away" / "<id>:home") and the
+// games that just became an upset watch (their tag pops in). The caller decides when not to animate at all
+// (first load of a day, or catching up after a minute or more in the background).
+export function scoreChanges(before, after, lines) {
+  const old = new Map(before.map((g) => [g.id, g]));
+  const flashes = [];
+  const pops = [];
+  for (const g of after) {
+    const o = old.get(g.id);
+    if (!o) continue;
+    for (const side of ["away", "home"]) {
+      if (g[side].score !== null && o[side].score !== null && g[side].score !== o[side].score) flashes.push(`${g.id}:${side}`);
+    }
+    const info = lines?.get(g.id);
+    if (upsetState(g, info) === "watch" && upsetState(o, info) !== "watch") pops.push(g.id);
+  }
+  return { flashes, pops };
 }
 
 // ---- dates (all in Eastern time, which is how ESPN groups a day's games) ----

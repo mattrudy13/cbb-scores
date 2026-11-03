@@ -205,4 +205,21 @@ h1 { margin: 4px 0 0; font-family: Graduate, serif; font-weight: 400; font-size:
 .upset-watch::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
 .hero .upset-tag { align-self: center; }
 
+/* A new score glows orange and fades (Rudy's pick from the 2026-11-02 animation demo). */
+.score.is-flash { border-radius: 6px; animation: score-flash 1.2s ease-out both; }
+@keyframes score-flash {
+  0% { background: rgba(255, 154, 82, 0.55); box-shadow: 0 0 0 4px rgba(255, 154, 82, 0.35); transform: scale(1.12); }
+  35% { transform: scale(1); }
+  100% { background: transparent; box-shadow: 0 0 0 4px rgba(255, 154, 82, 0); }
+}
+.upset-tag.is-pop { animation: tag-pop 0.9s ease-out both; }
+@keyframes tag-pop {
+  0% { transform: scale(0.85); opacity: 0; box-shadow: 0 0 0 0 rgba(168, 69, 12, 0.5); }
+  40% { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1); box-shadow: 0 0 0 8px rgba(168, 69, 12, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .score.is-flash, .upset-tag.is-pop { animation: none; }
+}
+
 .footer { padding-top: 4px; padding-bottom: 32px; text-align: center; font-size: 13px; color: var(--muted); }

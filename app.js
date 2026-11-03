@@ -1,7 +1,7 @@
 import {
   ESPN, BOARD_QUERIES, FILTERS, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
   statusText, tipTime, scoreRole, etDate, isIsoDate, addDays, dayLabel, dayLabelShort, dayTag, nextDelay,
-  oddsUrl, parseLine, upsetState, upsetTag, UPSET_MIN,
+  oddsUrl, parseLine, upsetState, upsetTag, UPSET_MIN, scoreChanges,
 } from "./lib.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -17,7 +17,32 @@ const state = {
   updated: null,
   error: "",
   timer: null,
+  hiddenAt: 0,
+  quietNext: false, // the next load shows new scores without animating (back after 1+ min away)
 };
+
+// ---- score-change animation ----
+// When a check finds a new score, that number glows for FLASH_MS; when a game becomes an upset watch, its tag
+// pops in. Each start time is kept so a re-render mid-animation (a filter tap, lines arriving) continues it
+// instead of restarting it. Nothing animates on a day's first load or after 1+ minute in the background,
+// when every game would light up at once. Reduce Motion turns it off in style.css.
+const FLASH_MS = 1200;
+const POP_MS = 900;
+const flashAt = new Map(); // "<event id>:away" → ms
+const popAt = new Map(); // event id → ms
+
+function anim(map, key, ms, cls) {
+  const at = map.get(key);
+  if (!at) return { cls: "", style: "" };
+  const elapsed = Date.now() - at;
+  if (elapsed >= ms) { map.delete(key); return { cls: "", style: "" }; }
+  return { cls: ` ${cls}`, style: ` style="animation-delay:-${elapsed}ms"` };
+}
+
+function scoreSpan(g, side, extra = "") {
+  const a = anim(flashAt, `${g.id}:${side}`, FLASH_MS, "is-flash");
+  return `<span class="score score-${scoreRole(g, side)}${extra}${a.cls}"${a.style}>${g[side].score ?? ""}</span>`;
+}
 
 // ---- URL: ?d=2026-11-10&f=acc, so the back button and bookmarks work ----
 
@@ -55,7 +80,15 @@ async function load() {
     // Keep whatever was showing for this day and say so.
     state.error = state.loadedFor === date ? "Couldn't reach ESPN. Showing the last scores that loaded." : "Couldn't reach ESPN. Try again in a minute.";
   } else {
-    state.games = mergeBoards(boards).filter(isShown);
+    const next = mergeBoards(boards).filter(isShown);
+    if (state.loadedFor === date && !state.quietNext) {
+      const now = Date.now();
+      const { flashes, pops } = scoreChanges(state.games, next, lines);
+      flashes.forEach((k) => flashAt.set(k, now));
+      pops.forEach((id) => popAt.set(id, now));
+    }
+    state.quietNext = false;
+    state.games = next;
     state.loadedFor = date;
     state.updated = new Date();
     state.error = boards.length < results.length ? "ESPN didn't answer for every conference, so a few games may be missing." : "";
@@ -128,14 +161,16 @@ function teamRow(g, side) {
       <span class="team-name ${role === "won" || role === "lead" ? "is-ahead" : ""}">${rankTag(t)}${esc(t.name)}</span>
       ${t.record ? `<span class="record">${esc(t.record)}</span>` : ""}
     </div>
-    <span class="score score-${role}">${t.score ?? ""}</span>
+    ${scoreSpan(g, side)}
   </div>`;
 }
 
 function upsetBadge(g) {
   const info = lines.get(g.id);
   const tag = upsetTag(g, info);
-  return tag ? `<span class="upset-tag upset-${upsetState(g, info)}">${esc(tag)}</span>` : "";
+  if (!tag) return "";
+  const a = anim(popAt, g.id, POP_MS, "is-pop");
+  return `<span class="upset-tag upset-${upsetState(g, info)}${a.cls}"${a.style}>${esc(tag)}</span>`;
 }
 
 function gameCard(g) {
@@ -168,7 +203,7 @@ function uvaHero(g) {
     : state.date === today ? "Today" : dayTag(state.date, today) === "Tomorrow" ? "Tomorrow" : dayLabel(state.date).split(",")[0];
   const middle = g.state === "pre"
     ? `<span class="hero-tip">${esc(tipTime(g))}</span>`
-    : `<span class="score score-${scoreRole(g, "away")}">${g.away.score ?? ""}</span><span class="hero-dash">–</span><span class="score score-${scoreRole(g, "home")}">${g.home.score ?? ""}</span>`;
+    : `${scoreSpan(g, "away")}<span class="hero-dash">–</span>${scoreSpan(g, "home")}`;
   const foot = [g.state === "pre" ? "" : statusText(g), g.tv, g.state === "pre" ? g.line : ""].filter(Boolean);
   return `<a class="hero" href="${esc(safeUrl(g.link))}" target="_blank" rel="noopener" aria-label="Virginia: ${esc(`${g.away.name} at ${g.home.name}, ${statusText(g)}`)} (ESPN, new tab)">
     <span class="hero-label ${g.state === "in" ? "is-live" : ""}">Virginia · ${esc(when)}</span>
@@ -219,7 +254,7 @@ function render() {
   else if (ready && !games.length) body = `<p class="empty">No Power 4, Big East or Top 25 games on this day.</p>`;
   else if (ready && !rest.length && state.filter === "upsets") {
     body = checking ? `<p class="empty">Checking betting lines…</p>`
-      : `<p class="empty">No upsets on this day: no ${UPSET_MIN}+ point underdog has won${games.some((g) => g.state === "in") ? " or is leading" : ""}.</p>`;
+      : `<p class="empty">No upsets on this day: no ${UPSET_MIN}+ point underdog or lower-ranked team has won${games.some((g) => g.state === "in") ? " or is leading" : ""}.</p>`;
   } else if (ready && !rest.length && !uva) body = `<p class="empty">No ${esc(label)} games on this day.</p>`;
   else if (ready && !rest.length) body = state.filter === "all" ? "" : `<p class="empty">No other ${esc(label)} games on this day.</p>`;
   $("#games").innerHTML = body;
@@ -258,8 +293,14 @@ document.addEventListener("error", (e) => {
 
 // Don't poll ESPN from a background tab; catch up as soon as it's visible again.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) clearTimeout(state.timer);
-  else load();
+  if (document.hidden) {
+    clearTimeout(state.timer);
+    state.hiddenAt = Date.now();
+  } else {
+    // Back after a minute or more: show where things stand without lighting up the whole board.
+    if (state.hiddenAt && Date.now() - state.hiddenAt > 60 * 1000) state.quietNext = true;
+    load();
+  }
 });
 
 // Light/dark: follows the device until the moon button is used, then remembers the pick on this device.
