@@ -70,6 +70,14 @@ function lineText(odds) {
   return parts.join(" · ");
 }
 
+// Seconds left in the current period: ESPN's numeric `clock`, else parsed from "14:30" or "45.2".
+function clockSeconds(status) {
+  const n = Number(status?.clock);
+  if (Number.isFinite(n)) return n;
+  const m = /^(?:(\d+):)?(\d+(?:\.\d+)?)$/.exec(status?.displayClock ?? "");
+  return m ? Number(m[1] ?? 0) * 60 + Number(m[2]) : 0;
+}
+
 export function normalizeEvent(ev) {
   const c = ev?.competitions?.[0];
   if (!c || !Array.isArray(c.competitors)) return null;
@@ -87,6 +95,7 @@ export function normalizeEvent(ev) {
     statusName: st.name ?? "",
     shortDetail: st.shortDetail ?? "",
     clock: c.status?.displayClock ?? "",
+    clockSec: clockSeconds(c.status),
     period: Number(c.status?.period ?? 0),
     tv: c.broadcasts?.[0]?.names?.[0] ?? c.broadcast ?? "",
     line: lineText(c.odds?.[0]),
@@ -180,12 +189,28 @@ export function upsetTag(g, info) {
 const margin = (g) => Math.abs((g.away.score ?? 0) - (g.home.score ?? 0));
 const startMs = (g) => Date.parse(g.start) || 0;
 
-// Live first (closest game first), then upcoming by tip time, then finals by tip time.
+// Men's games are two 20-minute halves, then 5-minute overtimes.
+export function secondsLeft(g) {
+  if (g.statusName === "STATUS_HALFTIME") return 20 * 60;
+  if (g.statusName === "STATUS_END_PERIOD") return g.period <= 1 ? 20 * 60 : 0;
+  if (g.period <= 0) return 40 * 60;
+  return g.period === 1 ? 20 * 60 + g.clockSec : g.clockSec;
+}
+
+// A live game within this many points sorts above the blowouts (Rudy's pick).
+export const CLOSE_MARGIN = 10;
+
+// Live first: close games (within 10) by least time left, then blowouts by least time left. Then
+// upcoming by tip time, then finals by tip time.
 export function sortGames(games) {
   const rank = { in: 0, pre: 1, post: 2 };
+  const live = (a, b) =>
+    (margin(a) > CLOSE_MARGIN) - (margin(b) > CLOSE_MARGIN) ||
+    secondsLeft(a) - secondsLeft(b) ||
+    margin(a) - margin(b);
   return [...games].sort((a, b) =>
     (rank[a.state] ?? 1) - (rank[b.state] ?? 1) ||
-    (a.state === "in" ? margin(a) - margin(b) : 0) ||
+    (a.state === "in" && b.state === "in" ? live(a, b) : 0) ||
     startMs(a) - startMs(b) ||
     a.home.name.localeCompare(b.home.name));
 }

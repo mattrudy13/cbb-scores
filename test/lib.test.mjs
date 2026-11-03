@@ -98,6 +98,20 @@ test("sort: live (closest first), then upcoming by tip, then final", () => {
   assert.deepEqual(sections(out).map((s) => s.title), ["Live", "Up next", "Final"]);
 });
 
+test("live sort: close games by least time left, then blowouts by least time left", () => {
+  const live = (id, period, clock, a, h, name = "STATUS_IN_PROGRESS") => normalizeEvent(ev({ id, state: "in", name, period, clock,
+    away: { ...SMALL1, score: a }, home: { ...VT, score: h } }));
+  const out = sortGames([
+    live("early-tie", 1, "15:00", "10", "10"), // 35:00 left
+    live("half", 1, "0:00", "30", "33", "STATUS_HALFTIME"), // 20:00 left
+    live("blowout-late", 2, "0:58", "50", "75"), // 0:58 left, 25 points
+    live("ot", 3, "2:10", "70", "72"), // overtime, 2:10 left
+    live("late-close", 2, "3:05", "60", "57"), // 3:05 left, 3 points
+    live("blowout-early", 1, "12:00", "5", "25"),
+  ]);
+  assert.deepEqual(out.map((g) => g.id), ["ot", "late-close", "half", "early-tie", "blowout-late", "blowout-early"]);
+});
+
 test("status text", () => {
   const base = { away: SMALL1, home: VT };
   assert.equal(statusText(normalizeEvent(ev({ id: "a", state: "in", name: "STATUS_IN_PROGRESS", period: 2, clock: "14:30", ...base }))), "2nd · 14:30");
