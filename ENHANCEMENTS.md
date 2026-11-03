@@ -37,3 +37,4 @@ features, roughly in the order they'd be worth doing.
 ## Done
 
 - v0.2 Upsets filter; v0.3 score flash and rank upsets; v0.4 time-left live sort (all 2026-11-02).
+- v0.5 pre-game spread + O/U stay on live and final cards (2026-11-03).

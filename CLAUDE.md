@@ -24,6 +24,7 @@ All on 2026-11-02 (opening night), tagged in git:
 - **v0.2**: Upsets filter (5+ point underdogs that won, live "upset watch").
 - **v0.3**: score flash on change; ranked team losing to unranked/lower-ranked counts as an upset.
 - **v0.4**: live games sort close-first by time left.
+- **v0.5** (2026-11-03): live and final cards keep the pre-game spread + O/U.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
 rank upset rule fires too often on league Saturdays, and whether "Upset watch" is noisy early in games.
@@ -48,7 +49,8 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
   within 10 points (`CLOSE_MARGIN`) first, by least time left; then blowouts, by least time left; ties by
   margin. `secondsLeft()`: 1st half = 20:00 + clock, halftime = 20:00, 2nd half and OT = clock (ESPN's
   numeric `status.clock`, in seconds).
-- **Card:** logo, AP rank, team, record, score, status, TV; DraftKings spread + O/U before tip only.
+- **Card:** logo, AP rank, team, record, score, status, TV; DraftKings spread + O/U. Before tip it's the scoreboard's line; once a game tips
+  (live and final) it's the saved pre-game line from the odds feed (v0.5, Rudy asked; never live odds).
   Tapping opens ESPN's game page in a new tab (no box scores built in).
 - **Records:** overall only until the team has played a conference game, then "13-2 · 4-0 ACC".
   0-0 shows as 0-0 (so the cards keep their shape). Conference short names live in `CONF_SHORT`
@@ -73,12 +75,14 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
   (`progress()` in `lib.js`).
 - ESPN sends score "0" before tip-off; `normalizeEvent` blanks pre-game scores.
 - The scoreboard's `odds` disappears once a game tips (live and final), and is often missing early in the
-  season. For upsets, each tipped game's line comes from ESPN's core odds feed
+  season. For upsets and the card's line after tip, each tipped game's line comes from ESPN's core odds feed
   (`sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events/<id>/competitions/<id>/odds`,
   ~7 KB, CORS `*`). Its items include "DraftKings" (the pre-game line, kept) and "DraftKings - Live Odds"
   (ignored). `spread` is from the home side; `homeTeamOdds.favorite` says who's favored. The game summary's
-  `pickcenter` has the same line but is ~435 KB. Lines are fetched four at a time, once per game, and kept
-  in localStorage (`cbb-scores:lines`, last 1,500 games; a null = "checked, no line"). Failed requests
+  `pickcenter` has the same line but is ~435 KB. `parseLine()` keeps the spread, favorite and display text (spread + O/U); a pick'em
+  has `line: 0`, `fav: null`. Lines are fetched four at a time, once per game, and kept
+  in localStorage (`cbb-scores:lines2`, last 1,500 games; a null = "checked, no line"). v0.5 drops the old
+  `cbb-scores:lines` key, whose entries lacked the O/U. Failed requests
   aren't saved, so the next refresh retries. Opening night (58 games) was 58 requests.
 - `timeValid: false` = tip time not set yet ("TBA").
 - Status names used: `STATUS_HALFTIME`, `STATUS_END_PERIOD`, and postponed/canceled/suspended/delayed/forfeit
