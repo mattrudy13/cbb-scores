@@ -102,6 +102,13 @@ borders (#c9a46f), Graduate numerals + DM Sans, orange #a8450c (#ff9a52 on dark)
 score on its own row, and the update time in the footer. The same canvas has the filter-placement board and
 the score-animation demo (3 live phone frames: flash, flip, pulse; Rudy picked the flash).
 
+## Used by Rudy's Board (hub)
+
+Since 2026-11-07 the Board's Hoops Board tile (`hub/tiles.js`) imports this site's `lib.js` from the live URL
+(`ESPN`, `BOARD_QUERIES`, `UVA_ID`, `mergeBoards`, `isShown`, `hasUva`, `statusText`, `oddsUrl`, `parseLine`,
+`upsetState`, `etDate`) and reads/writes the same `cbb-scores:lines3` cache (same origin). Renaming one of those
+exports or bumping the cache key means updating the hub too; otherwise its tile falls back to a plain link.
+
 ## Checks
 
 - `npm test`
