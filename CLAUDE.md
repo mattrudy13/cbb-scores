@@ -26,6 +26,7 @@ All on 2026-11-02 (opening night), tagged in git:
 - **v0.4**: live games sort close-first by time left.
 - **v0.5** (2026-11-03): live and final cards keep the pre-game spread + O/U.
 - **v0.6** (2026-11-03): after tip, just the spread; the O/U shows before tip only.
+- **v0.7** (2026-11-10): navy dark mode ("Deep header") replaces the dark-brown one.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
 rank upset rule fires too often on league Saturdays, and whether "Upset watch" is noisy early in games.
@@ -94,13 +95,17 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
 ## Look
 
 Hardwood, adapted from kotc-tracker's unused Hardwood mockup. Rudy picked it from five directions
-(mockups: https://claude.ai/artifact/BHNe8oW31sEcX8ToFPMRLa): navy header (#1d3557; near-black in dark
-mode) with a center-court circle behind the date only, floorboard stripe, maple ground (#f1e4cc), court-line
+(mockups: https://claude.ai/artifact/BHNe8oW31sEcX8ToFPMRLa): navy header (#1d3557) with a center-court circle behind the date only, floorboard stripe, maple ground (#f1e4cc), court-line
 borders (#c9a46f), Graduate numerals + DM Sans, orange #a8450c (#ff9a52 on dark). Filters are the
 "scorer's table" row: solid cream chips under the stripe, sticky while scrolling, never over court lines
-(Rudy found outlined chips on court lines clashed). Phones get a short weekday ("Tue, Nov 3"), the UVA
-score on its own row, and the update time in the footer. The same canvas has the filter-placement board and
+(Rudy found outlined chips on court lines clashed). Phones get a short weekday ("Tue, Nov 3"), the UVA score on its own row, and the update time in the footer. The same canvas has the filter-placement board and
 the score-animation demo (3 live phone frames: flash, flip, pulse; Rudy picked the flash).
+
+**Dark mode** (v0.7, Rudy's pick 2026-11-10 from three navy options; mockups:
+https://claude.ai/artifact/L5s9QLtN2aAF9xR7BgQPnL) is "Deep header": the old dark-brown version read muddy and
+lost the navy. Now a navy floor (#16263f), navy cards (#1f3352), maple court lines (#a7834f), cream text and
+pucks, and a deeper navy header (#0a1322) so the header stays the darkest band, as in light mode. The
+`theme-color` metas and `applyTheme()` keep the browser bar matching the header.
 
 ## Used by Rudy's Board (hub)
 
