@@ -17,37 +17,39 @@
   color-scheme: light;
 }
 
+/* Dark: "Deep header" (Rudy's pick, 2026-11-10). Navy floor with maple court lines; the header is the
+   darkest band, as in light mode. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1b130c;
-    --panel: #271b11;
-    --ink: #f6ead8;
-    --muted: #c9b597;
-    --line: #4a3523;
+    --bg: #16263f;
+    --panel: #1f3352;
+    --ink: #f4ecdd;
+    --muted: #b1bdd0;
+    --line: #314870;
     --orange: #ff9a52;
     --orange-fill: #a8450c;
-    --court: #6e4c2e;
-    --head-bg: #0f0a06;
-    --head-ink: #f6ead8;
-    --head-muted: #b5a48c;
-    --puck: #f6ead8;
+    --court: #a7834f;
+    --head-bg: #0a1322;
+    --head-ink: #fffaf1;
+    --head-muted: #9eabc0;
+    --puck: #f4ecdd;
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #1b130c;
-  --panel: #271b11;
-  --ink: #f6ead8;
-  --muted: #c9b597;
-  --line: #4a3523;
+  --bg: #16263f;
+  --panel: #1f3352;
+  --ink: #f4ecdd;
+  --muted: #b1bdd0;
+  --line: #314870;
   --orange: #ff9a52;
   --orange-fill: #a8450c;
-  --court: #6e4c2e;
-  --head-bg: #0f0a06;
-  --head-ink: #f6ead8;
-  --head-muted: #b5a48c;
-  --puck: #f6ead8;
+  --court: #a7834f;
+  --head-bg: #0a1322;
+  --head-ink: #fffaf1;
+  --head-muted: #9eabc0;
+  --puck: #f4ecdd;
   color-scheme: dark;
 }
 

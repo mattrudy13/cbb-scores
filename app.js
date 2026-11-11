@@ -309,7 +309,10 @@ document.addEventListener("visibilitychange", () => {
 // Light/dark: follows the device until the moon button is used, then remembers the pick on this device.
 const THEME_KEY = "cbb-scores:theme";
 function applyTheme(t) {
-  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  if (t !== "light" && t !== "dark") return;
+  document.documentElement.dataset.theme = t;
+  // The browser bar matches the header; a picked theme overrides the device-based theme-color metas.
+  for (const m of document.querySelectorAll('meta[name="theme-color"]')) m.content = t === "dark" ? "#0a1322" : "#1d3557";
 }
 try { applyTheme(localStorage.getItem(THEME_KEY)); } catch { /* storage blocked: follow the device */ }
 $("#theme").addEventListener("click", () => {
