@@ -19,7 +19,7 @@ patching it when it breaks.
 
 ## Versions
 
-All on 2026-11-02 (opening night), tagged in git:
+Tagged in git. v0.1–v0.4 all shipped on 2026-11-02 (opening night):
 - **v0.1**: scoreboard (P4 + Big East + Top 25, UVA pinned, filters, day arrows, 30 s refresh), Hardwood look.
 - **v0.2**: Upsets filter (5+ point underdogs that won, live "upset watch").
 - **v0.3**: score flash on change; ranked team losing to unranked/lower-ranked counts as an upset.
@@ -27,6 +27,8 @@ All on 2026-11-02 (opening night), tagged in git:
 - **v0.5** (2026-11-03): live and final cards keep the pre-game spread + O/U.
 - **v0.6** (2026-11-03): after tip, just the spread; the O/U shows before tip only.
 - **v0.7** (2026-11-10): navy dark mode ("Deep header") replaces the dark-brown one.
+- **v0.8** (2026-11-11): fixes from a code review: 10 s fetch timeouts, only the newest load's answer is used,
+  and a tab left on "today" overnight moves to the new today.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
 rank upset rule fires too often on league Saturdays, and whether "Upset watch" is noisy early in games.
@@ -39,6 +41,12 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
   nothing extra.
 - **Days:** opens on today in Eastern time; ◀ ▶ step a day. `?d=YYYY-MM-DD&f=<filter>` in the URL
   (today and "all" are left out of the URL).
+- **Day rollover** (v0.8, Rudy's rule 2026-11-11): a page that was on "today" when it was hidden moves to the
+  new today when Rudy comes back to the tab, once the Eastern date has changed and no game on the shown day
+  is live (a late West Coast game stays up past midnight). If the last scores it had showed a live game, it
+  reloads that day first and moves only if nothing is live any more. Only on returning to the tab: a board
+  being watched never jumps when its last game ends. A day picked with the arrows or `?d=` never moves.
+  `canRollOver()` in `lib.js`; `onToday`, `rollPending` and `rollIfDue()` in `app.js`.
 - **Upsets** (added 2026-11-02, v0.2): a filter after Top 25. An upset is either (1) an underdog of 5+ points
   (`UPSET_MIN`, Rudy's pick over the hub's 7) that won, or (2, v0.3) a ranked team losing to an unranked or
   lower-ranked team, whatever the spread said (even if that team was favored). A live game where either would
@@ -66,7 +74,10 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
   at ~9% of changes, but ESPN's feed seemed to bunch updates more than that on opening night.
 - **Refresh:** every 30 s while a game on the shown day is live or tips within 15 min, every 10 min while
   games are still to come, never for a finished day, and never in a hidden tab (it catches up on return).
-  If every request fails, the last good scores stay up with a note.
+  If every request fails, the last good scores stay up with a note. Every fetch (boards and lines) gives up
+  after 10 s (`TIMEOUT_MS`, v0.8): the next refresh is only scheduled once a load settles, so one hung request
+  used to stop the refresh. Loads are numbered (`loadSeq`) and only the newest one's answer is used, so a
+  slower, older response can't put earlier scores back (and re-flash them).
 
 ## Data notes
 

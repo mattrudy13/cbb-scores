@@ -19,8 +19,9 @@ features, roughly in the order they'd be worth doing.
 
 ## Features
 
-- **Hub link**: link Hoops Board from hub Daily's basketball tile (one line in `hub/daily.js`), and later
-  maybe an 8th app tile on Rudy's Board (live game count, UVA's next game).
+- **Home Screen icon**: a web app manifest and Apple touch icon so it opens full-screen from the phone's
+  Home Screen. Recommended first (2026-11-11 review): cheapest feature for daily phone use, and it pairs
+  with v0.8's day-rollover fix, since a Home Screen app is the one most often reopened the next day.
 - **Close-game highlight**: a small "Close" marker or warmer card border on live games within 5 points in
   the last 5 minutes, so crunch time stands out without opening each game.
 - **Swipe between days** on phones, in addition to the arrows.
@@ -30,8 +31,6 @@ features, roughly in the order they'd be worth doing.
   labels during Championship Week.
 - **Women's toggle**: a Men / Women switch; ESPN's `womens-college-basketball` feed has the same shape
   (quarters instead of halves, so `secondsLeft()` and `periodName` would need a women's branch).
-- **Home Screen icon**: a web app manifest and Apple touch icon so it opens full-screen from the phone's
-  Home Screen.
 - **Favorites besides UVA**: a short list of other teams to pin (stored on the device).
 
 ## Done
@@ -39,3 +38,9 @@ features, roughly in the order they'd be worth doing.
 - v0.2 Upsets filter; v0.3 score flash and rank upsets; v0.4 time-left live sort (all 2026-11-02).
 - v0.5 pre-game line stays on live and final cards; v0.6 trims it to the spread after tip (2026-11-03).
 - v0.7 navy dark mode ("Deep header") replaces the dark-brown one (2026-11-10).
+- v0.8 fixes from the 2026-11-11 code review: 10 s fetch timeouts (a hung request used to stop the refresh);
+  a tab left on "today" overnight moves to the new today on return, once nothing shown is live; only the
+  newest load's answer is used; `package.json` version, one unescaped ESPN string, and the tests now cover
+  ESPN's numeric clock and `secondsLeft()`.
+- Hub link: hub Daily's basketball tile links here and Rudy's Board has a Hoops Board tile (2026-11-07,
+  in the hub repo).
