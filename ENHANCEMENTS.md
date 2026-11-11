@@ -38,3 +38,4 @@ features, roughly in the order they'd be worth doing.
 
 - v0.2 Upsets filter; v0.3 score flash and rank upsets; v0.4 time-left live sort (all 2026-11-02).
 - v0.5 pre-game line stays on live and final cards; v0.6 trims it to the spread after tip (2026-11-03).
+- v0.7 navy dark mode ("Deep header") replaces the dark-brown one (2026-11-10).
