@@ -308,6 +308,11 @@ export function dayTag(iso, today) {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", year: "numeric" });
 }
 
+// A tab left open overnight still shows yesterday. Coming back to it, the board moves on to today once the
+// Eastern date has changed and nothing on the shown day is still live (so a late West Coast game stays up
+// past midnight). The caller only asks when the page was on "today" before it was hidden.
+export const canRollOver = (shown, today, games) => shown !== today && !games.some((g) => g.state === "in");
+
 // How long until the next refresh, or null for none: every 30 s while a game is live or about to tip,
 // every 10 min on a day with games still to come, never for a finished day.
 export function nextDelay(games, now = Date.now()) {

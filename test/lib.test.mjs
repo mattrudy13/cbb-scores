@@ -3,12 +3,13 @@ import assert from "node:assert/strict";
 import {
   recordLine, normalizeEvent, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
   statusText, scoreRole, addDays, dayLabel, dayTag, isIsoDate, nextDelay, parseLine, shownLine, upsetState, upsetTag,
-  scoreChanges,
+  scoreChanges, secondsLeft, canRollOver,
 } from "../lib.js";
 
-// A trimmed ESPN scoreboard event (only the fields lib.js reads).
+// A trimmed ESPN scoreboard event (only the fields lib.js reads). `secs` is ESPN's numeric `status.clock`,
+// which the live feed always sends; without it lib.js falls back to parsing the text clock.
 function ev({ id, state = "pre", name = "STATUS_SCHEDULED", period = 0, clock = "0:00", date = "2026-11-04T00:30Z",
-  away, home, odds, timeValid = true }) {
+  away, home, odds, timeValid = true, secs }) {
   const side = (homeAway, t) => ({
     homeAway,
     score: t.score ?? "0",
@@ -22,7 +23,7 @@ function ev({ id, state = "pre", name = "STATUS_SCHEDULED", period = 0, clock = 
     links: [{ rel: ["summary", "desktop", "event"], href: `https://www.espn.com/mens-college-basketball/game/_/gameId/${id}` }],
     competitions: [{
       timeValid,
-      status: { displayClock: clock, period, type: { state, name, shortDetail: "" } },
+      status: { clock: secs, displayClock: clock, period, type: { state, name, shortDetail: "" } },
       broadcasts: [{ names: ["ACC Network"] }],
       odds: odds ? [odds] : undefined,
       competitors: [side("home", home), side("away", away)],
@@ -112,6 +113,20 @@ test("live sort: close games by least time left, then blowouts by least time lef
   assert.deepEqual(out.map((g) => g.id), ["ot", "late-close", "half", "early-tie", "blowout-late", "blowout-early"]);
 });
 
+test("secondsLeft: from ESPN's numeric clock, or the text clock without it", () => {
+  const live = (period, clock, secs, name = "STATUS_IN_PROGRESS") => normalizeEvent(ev({ id: "s", state: "in", name, period, clock, secs, away: SMALL1, home: VT }));
+  assert.equal(secondsLeft(live(1, "14:30", 870)), 20 * 60 + 870); // first half: the rest of it plus the second
+  assert.equal(secondsLeft(live(2, "14:30", 870)), 870);
+  assert.equal(secondsLeft(live(2, "45.2", 45.2)), 45.2); // under a minute ESPN shows tenths
+  assert.equal(secondsLeft(live(3, "2:10", 130)), 130); // overtime
+  assert.equal(secondsLeft(live(1, "0:00", 0, "STATUS_HALFTIME")), 20 * 60);
+  assert.equal(secondsLeft(live(2, "0:00", 0, "STATUS_END_PERIOD")), 0); // end of regulation, headed to OT
+  // The number wins when the two disagree; the text is only the fallback.
+  assert.equal(secondsLeft(live(2, "9:99", 600)), 600);
+  assert.equal(secondsLeft(live(2, "14:30")), 870);
+  assert.equal(secondsLeft(live(2, "45.2")), 45.2);
+});
+
 test("status text", () => {
   const base = { away: SMALL1, home: VT };
   assert.equal(statusText(normalizeEvent(ev({ id: "a", state: "in", name: "STATUS_IN_PROGRESS", period: 2, clock: "14:30", ...base }))), "2nd · 14:30");
@@ -167,7 +182,7 @@ test("upsets: a 5+ underdog that won, or is leading live", () => {
   const GRAM = { id: "2755", name: "Grambling", abbr: "GRAM", confId: "26" };
   const game = (state, name, a, h, winner) => normalizeEvent(ev({ id: "u", state, name, period: 2, clock: "3:00",
     away: { ...GRAM, score: a, winner: winner === "away" }, home: { ...NIU, score: h, winner: winner === "home" } }));
-  const niuBy = (line) => ({ fav: "home", line, details: `NIU -${line}` });
+  const niuBy = (line) => ({ fav: "home", line, spread: `NIU −${line}` });
   const final = game("post", "STATUS_FINAL", "89", "87", "away");
   assert.equal(upsetState(final, niuBy(8.5)), "upset");
   assert.equal(upsetTag(final, niuBy(8.5)), "Upset · GRAM +8.5");
@@ -190,25 +205,25 @@ test("upsets by rank: a ranked team loses to an unranked or lower-ranked team, w
     away: { ...away, score: a, winner: winner === "away" }, home: { ...home, score: h, winner: winner === "home" } }));
   // #22 beats #5 with UCLA favored by 2 (spread rule can't apply): still an upset, by rank.
   const g1 = game("post", "STATUS_FINAL", ARIZ, UCLA, "70", "75", "home");
-  const uclaBy2 = { fav: "home", line: 2, details: "UCLA -2" };
+  const uclaBy2 = { fav: "home", line: 2, spread: "UCLA −2" };
   assert.equal(upsetState(g1, uclaBy2), "upset");
   assert.equal(upsetTag(g1, uclaBy2), "Upset · UCLA over #5");
   // Unranked Kansas, a 6-point favorite, beats #5: an upset by rank even though the favorite won.
   const g2 = game("post", "STATUS_FINAL", ARIZ, KU, "60", "66", "home");
-  assert.equal(upsetTag(g2, { fav: "home", line: 6, details: "KU -6" }), "Upset · KU over #5");
+  assert.equal(upsetTag(g2, { fav: "home", line: 6, spread: "KU −6" }), "Upset · KU over #5");
   // The higher-ranked team winning is not an upset.
   assert.equal(upsetState(game("post", "STATUS_FINAL", ARIZ, UCLA, "80", "70", "away"), null), null);
   // Live: #5 trails #22 → upset watch, no line needed.
   assert.equal(upsetTag(game("in", "STATUS_IN_PROGRESS", ARIZ, UCLA, "27", "37"), undefined), "Upset watch · UCLA over #5");
   // When both rules fit, the tag shows the line.
-  assert.equal(upsetTag(g1, { fav: "away", line: 5.5, details: "ARIZ -5.5" }), "Upset · UCLA +5.5");
+  assert.equal(upsetTag(g1, { fav: "away", line: 5.5, spread: "ARIZ −5.5" }), "Upset · UCLA +5.5");
 });
 
 test("scoreChanges: which numbers flash and which upset-watch tags pop in", () => {
   const HAMP = { id: "2261", name: "Hampton", abbr: "HAMP", confId: "10" };
   const GT = { id: "59", name: "Georgia Tech", abbr: "GT", confId: "2" };
   const live = (id, a, h) => normalizeEvent(ev({ id, state: "in", name: "STATUS_IN_PROGRESS", period: 2, clock: "9:00", away: { ...HAMP, score: a }, home: { ...GT, score: h } }));
-  const gtBy = new Map([["g", { fav: "home", line: 15.5, details: "GT -15.5" }]]);
+  const gtBy = new Map([["g", { fav: "home", line: 15.5, spread: "GT −15.5" }]]);
   // Hampton scores and takes the lead: their number flashes and the tag pops in.
   let c = scoreChanges([live("g", "41", "42")], [live("g", "43", "42")], gtBy);
   assert.deepEqual(c, { flashes: ["g:away"], pops: ["g"] });
@@ -219,6 +234,16 @@ test("scoreChanges: which numbers flash and which upset-watch tags pop in", () =
   assert.deepEqual(scoreChanges([], [live("g", "2", "0")], gtBy), { flashes: [], pops: [] });
   const pre = normalizeEvent(ev({ id: "g", away: HAMP, home: GT }));
   assert.deepEqual(scoreChanges([pre], [live("g", "2", "0")], gtBy).flashes, []);
+});
+
+test("day rollover: move to today once the date has changed and nothing shown is live", () => {
+  const game = (state, name) => normalizeEvent(ev({ id: "g", state, name, period: 2, away: SMALL1, home: VT }));
+  const fin = game("post", "STATUS_FINAL");
+  const live = game("in", "STATUS_IN_PROGRESS");
+  assert.equal(canRollOver("2026-11-10", "2026-11-11", [fin]), true);
+  assert.equal(canRollOver("2026-11-10", "2026-11-11", []), true); // nothing loaded, or an empty day
+  assert.equal(canRollOver("2026-11-10", "2026-11-11", [fin, live]), false); // a late game is still on
+  assert.equal(canRollOver("2026-11-11", "2026-11-11", [fin]), false); // same day
 });
 
 test("refresh timing", () => {

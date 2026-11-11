@@ -1,7 +1,7 @@
 import {
   ESPN, BOARD_QUERIES, FILTERS, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
   statusText, tipTime, scoreRole, etDate, isIsoDate, addDays, dayLabel, dayLabelShort, dayTag, nextDelay,
-  oddsUrl, parseLine, shownLine, upsetState, upsetTag, UPSET_MIN, scoreChanges,
+  oddsUrl, parseLine, shownLine, upsetState, upsetTag, UPSET_MIN, scoreChanges, canRollOver,
 } from "./lib.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -19,7 +19,14 @@ const state = {
   timer: null,
   hiddenAt: 0,
   quietNext: false, // the next load shows new scores without animating (back after 1+ min away)
+  loadSeq: 0, // counts loads, so only the newest one's answer is used
+  onToday: true, // the day was "today" when it was picked; such a page follows the calendar (see rollIfDue)
+  rollPending: false, // back in the tab on a new day: move to today once nothing shown is live
 };
+
+// A request that never answers (a phone moving from wifi to cell) would otherwise hold up the whole refresh,
+// since the next one is only scheduled after this one settles.
+const TIMEOUT_MS = 10 * 1000;
 
 // ---- score-change animation ----
 // When a check finds a new score, that number glows for FLASH_MS; when a game becomes an upset watch, its tag
@@ -51,6 +58,8 @@ function readUrl() {
   const d = p.get("d");
   const f = p.get("f");
   state.date = isIsoDate(d) ? d : etDate();
+  state.onToday = state.date === etDate();
+  state.rollPending = false;
   state.filter = FILTERS.some((x) => x.key === f) ? f : "all";
 }
 
@@ -65,7 +74,7 @@ function writeUrl(push) {
 // ---- data ----
 
 async function getBoard(date, q) {
-  const res = await fetch(`${ESPN}?dates=${date.replaceAll("-", "")}&limit=400${q}`, { cache: "no-store" });
+  const res = await fetch(`${ESPN}?dates=${date.replaceAll("-", "")}&limit=400${q}`, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!res.ok) throw new Error(`ESPN ${res.status}`);
   return res.json();
 }
@@ -73,8 +82,11 @@ async function getBoard(date, q) {
 async function load() {
   clearTimeout(state.timer);
   const date = state.date;
+  const seq = ++state.loadSeq;
   const results = await Promise.allSettled(BOARD_QUERIES.map((q) => getBoard(date, q)));
-  if (date !== state.date) return; // the user moved to another day while this was loading
+  // A newer load has started (another day picked, or back in the tab mid-refresh). Its answer wins, so a
+  // slower, older one can't put earlier scores back on the board.
+  if (seq !== state.loadSeq) return;
   const boards = results.filter((r) => r.status === "fulfilled").map((r) => r.value);
   if (!boards.length) {
     // Keep whatever was showing for this day and say so.
@@ -92,6 +104,11 @@ async function load() {
     state.loadedFor = date;
     state.updated = new Date();
     state.error = boards.length < results.length ? "ESPN didn't answer for every conference, so a few games may be missing." : "";
+    // Back on a new day with a game that looked live: these fresh scores settle whether it still is.
+    if (state.rollPending) {
+      if (rollIfDue()) return;
+      state.rollPending = false; // still live: stay on this day until the next return to the tab
+    }
   }
   render();
   schedule();
@@ -125,7 +142,7 @@ async function lookUpLines(games) {
     while (queue.length) {
       const g = queue.shift();
       try {
-        const res = await fetch(oddsUrl(g.id));
+        const res = await fetch(oddsUrl(g.id), { signal: AbortSignal.timeout(TIMEOUT_MS) });
         if (res.ok) lines.set(g.id, parseLine(await res.json()));
         else if (res.status === 404) lines.set(g.id, null);
         // Other failures aren't saved, so the next refresh tries again.
@@ -185,7 +202,7 @@ function gameCard(g) {
     ${teamRow(g, "away")}
     ${teamRow(g, "home")}
     <div class="game-foot">
-      <span class="status status-${g.state}">${esc(statusText(g))}</span>
+      <span class="status status-${esc(g.state)}">${esc(statusText(g))}</span>
       <span class="meta">${esc(meta)}</span>
     </div>
   </a>`;
@@ -270,9 +287,25 @@ function render() {
 
 function goTo(date) {
   state.date = date;
+  state.onToday = date === etDate();
+  state.rollPending = false;
   writeUrl(true);
   render();
   load();
+}
+
+// Moves a page that was left on "today" to the new today (Rudy's rule, 2026-11-11): only when coming back
+// to the tab, and only once no game on the shown day is live. True if it moved (and started the load).
+function rollIfDue() {
+  const today = etDate();
+  if (!state.rollPending || !canRollOver(state.date, today, state.loadedFor === state.date ? state.games : [])) return false;
+  state.date = today;
+  state.onToday = true;
+  state.rollPending = false;
+  writeUrl(false);
+  render();
+  load();
+  return true;
 }
 
 $("#prev").addEventListener("click", () => goTo(addDays(state.date, -1)));
@@ -302,7 +335,8 @@ document.addEventListener("visibilitychange", () => {
   } else {
     // Back after a minute or more: show where things stand without lighting up the whole board.
     if (state.hiddenAt && Date.now() - state.hiddenAt > 60 * 1000) state.quietNext = true;
-    load();
+    state.rollPending = state.onToday && state.date !== etDate();
+    if (!rollIfDue()) load();
   }
 });
 
