@@ -29,9 +29,10 @@ Tagged in git. v0.1–v0.4 all shipped on 2026-11-02 (opening night):
 - **v0.7** (2026-11-10): navy dark mode ("Deep header") replaces the dark-brown one.
 - **v0.8** (2026-11-11): fixes from a code review: 10 s fetch timeouts, only the newest load's answer is used,
   and a tab left on "today" overnight moves to the new today.
+- **v0.9** (2026-11-11): "Upset watch" waits for halftime unless the underdog leads by 10+ in the 1st half.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
-rank upset rule fires too often on league Saturdays, and whether "Upset watch" is noisy early in games.
+rank upset rule fires too often on league Saturdays.
 
 ## Rules (Rudy's decisions, 2026-11-02)
 
@@ -50,7 +51,9 @@ rank upset rule fires too often on league Saturdays, and whether "Upset watch" i
 - **Upsets** (added 2026-11-02, v0.2): a filter after Top 25. An upset is either (1) an underdog of 5+ points
   (`UPSET_MIN`, Rudy's pick over the hub's 7) that won, or (2, v0.3) a ranked team losing to an unranked or
   lower-ranked team, whatever the spread said (even if that team was favored). A live game where either would
-  happen if it ended now is an "Upset watch". Cards get a tag under every filter: the line when the spread
+  happen if it ended now is an "Upset watch", but only from halftime on (halftime and the end of the 1st
+  half count), or in the 1st half if the leader is up 10+ (`WATCH_EARLY_LEAD`; v0.9, Rudy's rule 2026-11-11:
+  a heavy favorite down 4-2 early isn't a watch yet). This also decides which live games the Upsets filter shows. Cards get a tag under every filter: the line when the spread
   rule fits ("Upset · GRAM +8.5"), else the rank that fell ("Upset · UCLA over #5"); solid for a final,
   outlined for a watch. `upsetInfo()` in `lib.js`. In the Upsets view the sections read "Upset watch" and "Upsets".
 - **Filters:** one at a time: All, Top 25, Upsets, ACC, Big Ten, Big 12, SEC, Big East. A game matches if either

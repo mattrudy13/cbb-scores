@@ -10,9 +10,6 @@ features, roughly in the order they'd be worth doing.
   #15 Texas Tech over #11 BYU (close to a coin flip). If the list feels padded, require a 5+ spot rank gap
   between two ranked teams, and keep every ranked loss to an unranked team. One condition in
   `upsetInfo()` (`lib.js`) plus a test. Natural time to judge: after a busy mid-January Saturday.
-- **Early "Upset watch" noise.** A ranked team or 5+ favorite trailing two minutes in already shows
-  "Upset watch". If that's noisy, only show it in the second half (or under 10 minutes left), using
-  `secondsLeft()`.
 - **Close-game cutoff.** Live games within 10 points (`CLOSE_MARGIN`) sort above blowouts. Could be 8 or 12;
   or tighten it late in games (e.g. within 6 in the last 5 minutes counts as "close").
 - **Upset threshold.** 5+ points (`UPSET_MIN`); the hub's Upsets tile uses 7+.
