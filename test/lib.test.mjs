@@ -219,6 +219,28 @@ test("upsets by rank: a ranked team loses to an unranked or lower-ranked team, w
   assert.equal(upsetTag(g1, { fav: "away", line: 5.5, spread: "ARIZ −5.5" }), "Upset · UCLA +5.5");
 });
 
+test("upset watch: from halftime on, or a 10+ lead in the 1st half", () => {
+  const NIU = { id: "2459", name: "N Illinois", abbr: "NIU", confId: "14" };
+  const GRAM = { id: "2755", name: "Grambling", abbr: "GRAM", confId: "26" };
+  const ARIZ = { id: "12", name: "Arizona", abbr: "ARIZ", confId: "8", rank: 5 };
+  const at = (period, clock, secs, a, h, name = "STATUS_IN_PROGRESS", home = NIU) => normalizeEvent(ev({ id: "w", state: "in",
+    name, period, clock, secs, away: { ...GRAM, score: a }, home: { ...home, score: h } }));
+  const niuBy = { fav: "home", line: 8.5, spread: "NIU −8.5" };
+  // Early 1st half, small lead: not yet, by spread or by rank.
+  assert.equal(upsetState(at(1, "17:40", 1060, "6", "4"), niuBy), null);
+  assert.equal(upsetState(at(1, "17:40", 1060, "6", "4", undefined, ARIZ), undefined), null);
+  // 1st half, 9 vs 10 point lead.
+  assert.equal(upsetState(at(1, "3:00", 180, "30", "21"), niuBy), null);
+  assert.equal(upsetState(at(1, "3:00", 180, "31", "21"), niuBy), "watch");
+  assert.equal(upsetState(at(1, "3:00", 180, "31", "21", undefined, ARIZ), undefined), "watch");
+  // Halftime and the end of the 1st half count as the 2nd half: any lead.
+  assert.equal(upsetState(at(1, "0:00", 0, "33", "32", "STATUS_HALFTIME"), niuBy), "watch");
+  assert.equal(upsetState(at(1, "0:00", 0, "33", "32", "STATUS_END_PERIOD"), niuBy), "watch");
+  // 2nd half and OT: any lead.
+  assert.equal(upsetState(at(2, "19:30", 1170, "35", "34"), niuBy), "watch");
+  assert.equal(upsetState(at(3, "4:00", 240, "75", "74"), niuBy), "watch");
+});
+
 test("scoreChanges: which numbers flash and which upset-watch tags pop in", () => {
   const HAMP = { id: "2261", name: "Hampton", abbr: "HAMP", confId: "10" };
   const GT = { id: "59", name: "Georgia Tech", abbr: "GT", confId: "2" };

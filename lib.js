@@ -140,6 +140,9 @@ export function matchesFilter(g, key, lines) {
 // which keeps the pre-game DraftKings line next to a separate "Live Odds" entry.
 
 export const UPSET_MIN = 5; // Rudy's rule: an underdog of 5+ points
+// A live game is an "Upset watch" from halftime on; in the first half only if the underdog leads by this much
+// (Rudy's rule, v0.9): a heavy favorite down 4-2 two minutes in isn't a watch yet, but down 14 late in the half is.
+export const WATCH_EARLY_LEAD = 10;
 export const oddsUrl = (id) => `https://sports.core.api.espn.com/v2/sports/basketball/leagues/mens-college-basketball/events/${id}/competitions/${id}/odds`;
 
 // The pre-game line from that feed: { fav: "home" | "away" | null, line: 8.5, spread: "NIU −8.5" }, or null
@@ -162,14 +165,18 @@ export const shownLine = (g, info) => (g.state === "pre" ? g.line : info?.spread
 // Why a game is (or is becoming) an upset, or null. Two rules (Rudy's):
 // - spread: the winner (or the live leader) was an underdog of UPSET_MIN+ points;
 // - rank: a ranked team lost to (or trails) an unranked or lower-ranked team, whatever the spread said.
+// A live game only counts from halftime on, or earlier with a WATCH_EARLY_LEAD+ point lead.
 // Returns { state: "upset" | "watch", why: "spread" | "rank", side, line?, beatenRank? }.
 export function upsetInfo(g, info) {
   const { away, home } = g;
   if (away.score === null || home.score === null || away.score === home.score) return null;
   let state;
   if (g.state === "post" && !/POSTPONED|CANCELED|CANCELLED|FORFEIT/.test(g.statusName)) state = "upset";
-  else if (g.state === "in") state = "watch";
-  else return null;
+  else if (g.state === "in") {
+    // secondsLeft() is 20:00 at halftime and the end of the 1st half, so both count as the 2nd half.
+    if (secondsLeft(g) > 20 * 60 && Math.abs(away.score - home.score) < WATCH_EARLY_LEAD) return null;
+    state = "watch";
+  } else return null;
   const side = (g.state === "post" && (away.winner || home.winner)) ? (away.winner ? "away" : "home") : away.score > home.score ? "away" : "home";
   const ahead = g[side];
   const behind = g[side === "away" ? "home" : "away"];
