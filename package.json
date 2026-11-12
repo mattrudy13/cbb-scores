@@ -1,6 +1,6 @@
 {
   "name": "cbb-scores",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Semi-live men's college basketball scores: Power 4, Big East and Top 25 games, UVA first.",
   "type": "module",
