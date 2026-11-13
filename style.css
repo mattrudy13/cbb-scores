@@ -68,12 +68,16 @@ body {
 button { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
 
-.wrap { max-width: 1184px; margin: 0 auto; padding: 0 var(--gutter); }
+.wrap { max-width: 1184px; margin: 0 auto; padding: 0 max(var(--gutter), env(safe-area-inset-right)) 0 max(var(--gutter), env(safe-area-inset-left)); }
 @media (min-width: 700px) { :root { --gutter: 32px; } }
 
 /* ---- header ---- */
 
-.masthead { background: var(--head-bg); color: var(--head-ink); }
+.masthead { background: var(--head-bg); color: var(--head-ink); padding-top: env(safe-area-inset-top); }
+/* Opened from the Home Screen, the page runs up behind the clock (black-translucent). This navy band keeps
+   that strip header-colored once the page scrolls, and the sticky filters stop just under it. In a browser
+   tab the inset is 0, so neither shows. */
+body::before { content: ""; position: fixed; z-index: 10; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--head-bg); }
 .masthead-inner { padding-top: 18px; padding-bottom: 20px; display: flex; flex-direction: column; gap: 14px; }
 .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; font-family: Graduate, serif; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -111,7 +115,7 @@ h1 { margin: 4px 0 0; font-family: Graduate, serif; font-weight: 400; font-size:
 
 /* ---- filters: the "scorer's table" row, pinned while scrolling ---- */
 
-.filters-bar { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 12px 0 10px; }
+.filters-bar { position: sticky; top: env(safe-area-inset-top); z-index: 5; background: var(--bg); padding: 12px 0 10px; }
 .filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 2px; }
 .filters::-webkit-scrollbar { display: none; }
 @media (min-width: 700px) { .filters { flex-wrap: wrap; justify-content: center; overflow: visible; margin: 0; padding: 0; } }
@@ -228,4 +232,4 @@ h1 { margin: 4px 0 0; font-family: Graduate, serif; font-weight: 400; font-size:
   .score.is-flash, .upset-tag.is-pop { animation: none; }
 }
 
-.footer { padding-top: 4px; padding-bottom: 32px; text-align: center; font-size: 13px; color: var(--muted); }
+.footer { padding-top: 4px; padding-bottom: calc(32px + env(safe-area-inset-bottom)); text-align: center; font-size: 13px; color: var(--muted); }
