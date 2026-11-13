@@ -19,9 +19,6 @@ features, roughly in the order they'd be worth doing.
 
 ## Features
 
-- **Home Screen icon**: a web app manifest and Apple touch icon so it opens full-screen from the phone's
-  Home Screen. Recommended first (2026-11-11 review): cheapest feature for daily phone use, and it pairs
-  with v0.8's day-rollover fix, since a Home Screen app is the one most often reopened the next day.
 - **Close-game highlight**: a small "Close" marker or warmer card border on live games within 5 points in
   the last 5 minutes, so crunch time stands out without opening each game.
 - **Swipe between days** on phones, in addition to the arrows.
@@ -44,5 +41,6 @@ features, roughly in the order they'd be worth doing.
   ESPN's numeric clock and `secondsLeft()`.
 - v0.10 tucks 20+ spread games into a "Show" row per section; they break out as an upset watch or when
   close late (2026-11-13).
+- v0.11 Home Screen icon (ball on navy), full screen with the header behind the clock (2026-11-13).
 - Hub link: hub Daily's basketball tile links here and Rudy's Board has a Hoops Board tile (2026-11-07,
   in the hub repo).

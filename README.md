@@ -12,6 +12,7 @@ Virginia pinned on top.
 - Step through days with the arrows (links like `?d=2026-03-14&f=acc` work too)
 - Updates every 30 seconds while games are live
 - Light and dark mode
+- Add to Home Screen (Safari: Share, then Add to Home Screen) and it opens full screen like an app
 
 Scores come straight from ESPN's public scoreboard feed in the browser. There's no server and no build
 step: it's plain HTML, CSS and JavaScript on GitHub Pages.

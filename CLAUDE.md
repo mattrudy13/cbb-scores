@@ -13,6 +13,9 @@ patching it when it breaks.
 - `app.js`: fetching, URL state, rendering, polling, betting-line lookups (+ localStorage cache), the
   score flash, theme toggle.
 - `style.css`: the Hardwood look. Light/dark tokens on `:root`.
+- `manifest.webmanifest`, `icon.svg`, `apple-touch-icon.png` (180), `icon-192.png`, `icon-512.png`: the Home
+  Screen app. The PNGs are rendered from `icon.svg` with headless Chrome (an `<img>` of the SVG at each size,
+  `--screenshot`); re-render them if the SVG changes. `favicon.svg` stays the browser-tab icon.
 - `test/lib.test.mjs`: unit tests on trimmed ESPN-shaped fixtures.
 - `.phones.html` (not deployed, gitignored): 320/360/375/390 px iframes of the page for width checks.
   Headless Chrome can't fetch ESPN from this machine's sandbox, so check it in real Chrome.
@@ -31,6 +34,7 @@ Tagged in git. v0.1–v0.4 all shipped on 2026-11-02 (opening night):
   and a tab left on "today" overnight moves to the new today.
 - **v0.9** (2026-11-11): "Upset watch" waits for halftime unless the underdog leads by 10+ in the 1st half.
 - **v0.10** (2026-11-13): games with a 20+ point spread are tucked into a "Show" row at the end of each section.
+- **v0.11** (2026-11-13): Home Screen icon; opens full screen with the navy header behind the clock.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
 rank upset rule fires too often on league Saturdays.
@@ -132,6 +136,15 @@ https://claude.ai/artifact/L5s9QLtN2aAF9xR7BgQPnL) is "Deep header": the old dar
 lost the navy. Now a navy floor (#16263f), navy cards (#1f3352), maple court lines (#a7834f), cream text and
 pucks, and a deeper navy header (#0a1322) so the header stays the darkest band, as in light mode. The
 `theme-color` metas and `applyTheme()` keep the browser bar matching the header.
+
+**Home Screen** (v0.11, Rudy's picks 2026-11-13; mockup of four icons shown in chat): icon A, the orange ball on
+header navy (#1d3557) with a faint center-court ring, full-bleed square (iOS rounds it; the ball sits inside
+Android's maskable safe circle). Opens `standalone` (no Safari bar; ESPN links open in a Safari sheet; its
+localStorage is separate from Safari's, so theme and cached lines start fresh once). Status bar is
+`black-translucent`: the page runs up behind the clock, so `.masthead` pads by `env(safe-area-inset-top)`, a
+fixed `body::before` band of `--head-bg` covers that strip once the page scrolls, and the sticky filters stop
+under it. `.wrap` and the footer also respect the side and bottom insets. In a browser tab every inset is 0.
+Checked by faking a 47 px inset in Chrome; the real thing needs an iPhone.
 
 ## Used by Rudy's Board (hub)
 
