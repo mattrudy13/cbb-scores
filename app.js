@@ -1,7 +1,7 @@
 import {
   ESPN, BOARD_QUERIES, FILTERS, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
   statusText, tipTime, scoreRole, etDate, isIsoDate, addDays, dayLabel, dayLabelShort, dayTag, nextDelay,
-  oddsUrl, parseLine, shownLine, upsetState, upsetTag, UPSET_MIN, scoreChanges, canRollOver,
+  oddsUrl, parseLine, shownLine, upsetState, upsetTag, UPSET_MIN, scoreChanges, canRollOver, BIG_SPREAD, isTucked, breaksOut,
 } from "./lib.js";
 
 const $ = (sel) => document.querySelector(sel);
@@ -22,6 +22,11 @@ const state = {
   loadSeq: 0, // counts loads, so only the newest one's answer is used
   onToday: true, // the day was "today" when it was picked; such a page follows the calendar (see rollIfDue)
   rollPending: false, // back in the tab on a new day: move to today once nothing shown is live
+  // Games with a 20+ spread start tucked into a row at the end of their section (see isTucked in lib.js).
+  // All three reset when another day loads.
+  openTucks: new Set(), // sections ("in" | "pre" | "post") whose tucked games are shown
+  brokeOut: new Set(), // tucked games that broke out (upset watch, close late): they stay out for the day
+  preSpread: new Map(), // event id → the scoreboard's spread size, kept for once it drops the line at tip
 };
 
 // A request that never answers (a phone moving from wifi to cell) would otherwise hold up the whole refresh,
@@ -93,6 +98,13 @@ async function load() {
     state.error = state.loadedFor === date ? "Couldn't reach ESPN. Showing the last scores that loaded." : "Couldn't reach ESPN. Try again in a minute.";
   } else {
     const next = mergeBoards(boards).filter(isShown);
+    if (state.loadedFor !== date) { state.openTucks.clear(); state.brokeOut.clear(); state.preSpread.clear(); }
+    // The scoreboard drops the spread at tip, before the odds feed has been asked; the copy from the last
+    // load keeps a just-tipped blowout tucked in the meantime instead of flashing onto the board.
+    for (const g of next) {
+      if (g.spreadSize != null) state.preSpread.set(g.id, g.spreadSize);
+      else if (state.preSpread.has(g.id)) g.spreadSize = state.preSpread.get(g.id);
+    }
     if (state.loadedFor === date && !state.quietNext) {
       const now = Date.now();
       const { flashes, pops } = scoreChanges(state.games, next, lines);
@@ -266,10 +278,24 @@ function render() {
   const rest = sortGames(games.filter((g) => g !== uva && matchesFilter(g, state.filter, lines)));
   const label = FILTERS.find((f) => f.key === state.filter)?.label ?? "";
   const titles = state.filter === "upsets" ? { in: "Upset watch", post: "Upsets" } : {};
-  let body = sections(rest).map((s) => `<section class="section">
-      <div class="section-head"><h2>${titles[s.state] ?? s.title}</h2><span class="section-n">${s.games.length}</span><span class="court-line"></span></div>
-      <div class="grid">${s.games.map(gameCard).join("")}</div>
-    </section>`).join("");
+  for (const g of games) if (breaksOut(g, lines.get(g.id))) state.brokeOut.add(g.id);
+  // The Upsets view only has games worth seeing, so nothing is tucked there.
+  const canTuck = state.filter !== "upsets";
+  let body = sections(rest).map((s) => {
+    const tucked = canTuck ? s.games.filter((g) => isTucked(g, lines.get(g.id), state.brokeOut)) : [];
+    const open = state.openTucks.has(s.state);
+    // Opened, the tucked games follow the rest so the row that closes them sits right under them.
+    const cards = [...s.games.filter((g) => !tucked.includes(g)), ...(open ? tucked : [])];
+    const n = `${tucked.length} ${tucked.length === 1 ? "game" : "games"} with a ${BIG_SPREAD}+ spread`;
+    const row = tucked.length
+      ? `<button type="button" class="tuck" data-tuck="${s.state}" aria-expanded="${open}">${open ? `Hide the ${n}` : `+${n}`}<span class="tuck-act">${open ? "Hide ▴" : "Show ▾"}</span></button>`
+      : "";
+    return `<section class="section">
+      <div class="section-head"><h2>${titles[s.state] ?? s.title}</h2>${cards.length ? `<span class="section-n">${cards.length}</span>` : ""}<span class="court-line"></span></div>
+      ${cards.length ? `<div class="grid">${cards.map(gameCard).join("")}</div>` : ""}
+      ${row}
+    </section>`;
+  }).join("");
   if (!ready && !state.error) body = `<p class="empty">Loading games…</p>`;
   else if (ready && !games.length) body = `<p class="empty">No Power 4, Big East or Top 25 games on this day.</p>`;
   else if (ready && !rest.length && state.filter === "upsets") {
@@ -318,6 +344,15 @@ $("#filters").addEventListener("click", (e) => {
   state.filter = b.dataset.filter;
   writeUrl(false);
   render();
+});
+
+$("#games").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-tuck]");
+  if (!b) return;
+  const key = b.dataset.tuck;
+  if (!state.openTucks.delete(key)) state.openTucks.add(key);
+  render();
+  $(`[data-tuck="${key}"]`)?.focus(); // the re-render replaced the button; keep keyboard users in place
 });
 
 window.addEventListener("popstate", () => { readUrl(); render(); load(); });

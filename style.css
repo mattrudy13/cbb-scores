@@ -180,6 +180,10 @@ h1 { margin: 4px 0 0; font-family: Graduate, serif; font-weight: 400; font-size:
 .section-head h2 { margin: 0; font-family: Graduate, serif; font-weight: 400; font-size: 24px; }
 .section-n { font-family: Graduate, serif; font-size: 24px; line-height: 1; color: transparent; -webkit-text-stroke: 1.5px var(--orange); }
 .court-line { flex: 1; height: 2px; background: var(--court); }
+/* The row holding a section's 20+ spread games: dashed like the empty note, since it stands in for cards. */
+.tuck { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 10px 16px; background: var(--panel); border: 2px dashed var(--court); border-radius: 10px; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.tuck:hover { border-color: var(--orange); }
+.tuck-act { flex: none; color: var(--orange); font-weight: 700; }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 @media (min-width: 700px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1040px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

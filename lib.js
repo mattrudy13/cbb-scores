@@ -100,6 +100,8 @@ export function normalizeEvent(ev) {
     period: Number(c.status?.period ?? 0),
     tv: c.broadcasts?.[0]?.names?.[0] ?? c.broadcast ?? "",
     line: lineText(c.odds?.[0]),
+    // The spread's size as a number (28.5), for hiding lopsided games; null without a line.
+    spreadSize: c.odds?.[0]?.spread != null && Number.isFinite(Number(c.odds[0].spread)) ? Math.abs(Number(c.odds[0].spread)) : null,
     link: (links.find((l) => (l.rel ?? []).includes("summary")) ?? links[0])?.href ?? "",
     away,
     home,
@@ -225,6 +227,29 @@ export function sortGames(games) {
     startMs(a) - startMs(b) ||
     a.home.name.localeCompare(b.home.name));
 }
+
+// ---- lopsided games ----
+// A game with a 20+ point spread starts tucked into a collapsed row at the end of its section (Rudy's rule,
+// 2026-11-13: a ranked team favored by 35 isn't worth a card). It comes out once it gets interesting: an
+// upset watch (or upset), or within CLOSE_MARGIN in the 2nd half or OT. app.js keeps it out for the rest
+// of the day after that, so a card never vanishes while it's being watched.
+export const BIG_SPREAD = 20;
+
+// The pre-game spread's size: the odds feed's saved line once the game has tipped, else the scoreboard's.
+// A game with no line at all is never tucked.
+export function spreadSize(g, info) {
+  if (g.state !== "pre" && info) return info.line;
+  return g.spreadSize ?? null;
+}
+
+// Interesting enough to show even with a 20+ spread.
+export function breaksOut(g, info) {
+  if (upsetState(g, info)) return true;
+  return g.state === "in" && g.period >= 2 && margin(g) <= CLOSE_MARGIN;
+}
+
+// Tucked away by default: a 20+ spread that hasn't broken out (`brokeOut` = ids that already did today).
+export const isTucked = (g, info, brokeOut) => (spreadSize(g, info) ?? 0) >= BIG_SPREAD && !breaksOut(g, info) && !brokeOut?.has(g.id);
 
 export const SECTION_TITLES = { in: "Live", pre: "Up next", post: "Final" };
 

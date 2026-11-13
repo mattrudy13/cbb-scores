@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   recordLine, normalizeEvent, mergeBoards, isShown, hasUva, matchesFilter, sortGames, sections,
   statusText, scoreRole, addDays, dayLabel, dayTag, isIsoDate, nextDelay, parseLine, shownLine, upsetState, upsetTag,
-  scoreChanges, secondsLeft, canRollOver,
+  scoreChanges, secondsLeft, canRollOver, spreadSize, breaksOut, isTucked,
 } from "../lib.js";
 
 // A trimmed ESPN scoreboard event (only the fields lib.js reads). `secs` is ESPN's numeric `status.clock`,
@@ -274,4 +274,55 @@ test("refresh timing", () => {
   assert.equal(nextDelay([pre("2026-11-04T00:10Z")], now), 30000); // tips within 15 min
   assert.equal(nextDelay([pre("2026-11-04T02:00Z")], now), 600000);
   assert.equal(nextDelay([normalizeEvent(ev({ id: "f", state: "post", name: "STATUS_FINAL", away: SMALL1, home: VT }))], now), null);
+});
+
+// ---- lopsided games (20+ spread) ----
+
+const BUY = { details: "UVA -28.5", spread: -28.5, overUnder: 142.5 };
+const DUKE_LINE = { fav: "home", line: 28.5, spread: "UVA −28.5" }; // the odds feed's saved line
+
+test("spreadSize: the scoreboard's before tip, the saved line after", () => {
+  assert.equal(normalizeEvent(ev({ id: "1", away: DREXEL, home: UVA, odds: BUY })).spreadSize, 28.5);
+  assert.equal(normalizeEvent(ev({ id: "1", away: DREXEL, home: UVA })).spreadSize, null);
+  const live = normalizeEvent(ev({ id: "1", state: "in", period: 1, secs: 600, away: { ...DREXEL, score: "10" }, home: { ...UVA, score: "30" } }));
+  assert.equal(spreadSize(live, DUKE_LINE), 28.5);
+  assert.equal(spreadSize(live, undefined), null); // not looked up yet, no scoreboard copy
+  assert.equal(spreadSize({ ...live, spreadSize: 28.5 }, undefined), 28.5); // the copy kept from before tip
+});
+
+test("isTucked: a 20+ spread before tip, not 19.5 and not a game without a line", () => {
+  const pre = (spread) => normalizeEvent(ev({ id: "1", away: DREXEL, home: UVA, odds: spread == null ? undefined : { details: "x", spread } }));
+  assert.equal(isTucked(pre(-28.5)), true);
+  assert.equal(isTucked(pre(20)), true);
+  assert.equal(isTucked(pre(-19.5)), false);
+  assert.equal(isTucked(pre(null)), false);
+});
+
+test("isTucked: a lopsided game breaks out as an upset watch, close late, or once it already has", () => {
+  const live = (period, secs, away, home, name = "STATUS_IN_PROGRESS") =>
+    normalizeEvent(ev({ id: "7", state: "in", name, period, secs, away: { ...DREXEL, score: String(away) }, home: { ...UVA, score: String(home) } }));
+  // Favorite rolling: tucked.
+  assert.equal(isTucked(live(2, 600, 40, 70), DUKE_LINE), true);
+  // Underdog up 3 at halftime: upset watch, so out.
+  const half = live(1, 0, 33, 30, "STATUS_HALFTIME");
+  assert.equal(breaksOut(half, DUKE_LINE), true);
+  assert.equal(isTucked(half, DUKE_LINE), false);
+  // Underdog up 3 early in the 1st half: not a watch yet, still tucked.
+  assert.equal(isTucked(live(1, 900, 8, 5), DUKE_LINE), true);
+  // Favorite only up 4 with 6:00 left: close late, out.
+  assert.equal(isTucked(live(2, 360, 60, 64), DUKE_LINE), false);
+  // Within 10 but still the 1st half: tucked.
+  assert.equal(isTucked(live(1, 300, 25, 30), DUKE_LINE), true);
+  // Close in OT counts too.
+  assert.equal(isTucked(live(3, 120, 70, 72), DUKE_LINE), false);
+  // Favorite pulled away again, but it broke out earlier today: stays out.
+  assert.equal(isTucked(live(2, 60, 55, 75), DUKE_LINE, new Set(["7"])), false);
+});
+
+test("isTucked: a final where the 20+ favorite won is tucked; one it lost is an upset and shows", () => {
+  const fin = (away, home) => normalizeEvent(ev({ id: "8", state: "post", name: "STATUS_FINAL", period: 2,
+    away: { ...DREXEL, score: String(away), winner: away > home }, home: { ...UVA, score: String(home), winner: home > away } }));
+  assert.equal(isTucked(fin(50, 85), DUKE_LINE), true);
+  assert.equal(isTucked(fin(70, 68), DUKE_LINE), false);
+  assert.equal(isTucked(fin(50, 85), null), false); // checked, no line: shown
 });
