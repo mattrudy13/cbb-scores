@@ -30,6 +30,7 @@ Tagged in git. v0.1–v0.4 all shipped on 2026-11-02 (opening night):
 - **v0.8** (2026-11-11): fixes from a code review: 10 s fetch timeouts, only the newest load's answer is used,
   and a tab left on "today" overnight moves to the new today.
 - **v0.9** (2026-11-11): "Upset watch" waits for halftime unless the underdog leads by 10+ in the 1st half.
+- **v0.10** (2026-11-13): games with a 20+ point spread are tucked into a "Show" row at the end of each section.
 
 Open questions to revisit after Rudy has used it (also in ENHANCEMENTS.md and NEXT-STEPS.md): whether the
 rank upset rule fires too often on league Saturdays.
@@ -56,6 +57,17 @@ rank upset rule fires too often on league Saturdays.
   a heavy favorite down 4-2 early isn't a watch yet). This also decides which live games the Upsets filter shows. Cards get a tag under every filter: the line when the spread
   rule fits ("Upset · GRAM +8.5"), else the rank that fell ("Upset · UCLA over #5"); solid for a final,
   outlined for a watch. `upsetInfo()` in `lib.js`. In the Upsets view the sections read "Upset watch" and "Upsets".
+- **Lopsided games** (v0.10, Rudy's rule 2026-11-13): a game with a 20+ point spread (`BIG_SPREAD`, inclusive;
+  19.5 shows) is tucked into a dashed "+7 games with a 20+ spread · Show" row at the end of its section (Live,
+  Up next, Final). Tapping it shows them after the other cards, for that section, until another day loads.
+  Applies under All, Top 25 and the conference filters, not Upsets. A tucked game breaks out if it's an upset
+  watch or upset, or within `CLOSE_MARGIN` (10) in the 2nd half or OT; once out it stays out for the rest of
+  the day (in memory only, so a reload re-tucks a final the favorite won). A game with no line is never
+  tucked. UVA's card is never tucked. The spread is the scoreboard's before tip and the odds feed's saved line
+  after; the scoreboard's copy is kept in memory across loads so a just-tipped blowout doesn't flash onto the
+  board before its odds-feed line arrives. Filter chips and the header still count every game. `isTucked()`,
+  `breaksOut()` and `spreadSize()` in `lib.js`; `openTucks`, `brokeOut` and `preSpread` in `app.js`. On
+  2026-11-13, 18 of 29 games were 20+.
 - **Filters:** one at a time: All, Top 25, Upsets, ACC, Big Ten, Big 12, SEC, Big East. A game matches if either
   team does. Counts on each button; a filter with no games that day is dimmed and disabled.
 - **Order after UVA:** Live, then Up next (tip time), then Final (tip time). Live (v0.4, Rudy's pick): games

@@ -13,6 +13,9 @@ features, roughly in the order they'd be worth doing.
 - **Close-game cutoff.** Live games within 10 points (`CLOSE_MARGIN`) sort above blowouts. Could be 8 or 12;
   or tighten it late in games (e.g. within 6 in the last 5 minutes counts as "close").
 - **Upset threshold.** 5+ points (`UPSET_MIN`); the hub's Upsets tile uses 7+.
+- **Lopsided cutoff (v0.10, 2026-11-13).** 20+ spreads (`BIG_SPREAD`) are tucked; 18 of 29 games were on
+  Nov 13. In conference play few games reach 20, so it may barely matter after December. If the tucked row
+  hides games you'd want, try 25; if the board still feels padded, 15.
 
 ## Features
 
@@ -39,5 +42,7 @@ features, roughly in the order they'd be worth doing.
   a tab left on "today" overnight moves to the new today on return, once nothing shown is live; only the
   newest load's answer is used; `package.json` version, one unescaped ESPN string, and the tests now cover
   ESPN's numeric clock and `secondsLeft()`.
+- v0.10 tucks 20+ spread games into a "Show" row per section; they break out as an upset watch or when
+  close late (2026-11-13).
 - Hub link: hub Daily's basketball tile links here and Rudy's Board has a Hoops Board tile (2026-11-07,
   in the hub repo).
